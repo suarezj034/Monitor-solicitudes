@@ -8,10 +8,13 @@ const hasBlob = () => !!process.env.BLOB_READ_WRITE_TOKEN;
 export async function saveData(data: DataPayload): Promise<void> {
   if (hasBlob()) {
     const { put } = await import("@vercel/blob");
+    // Los stores de Vercel Blob ahora son privados: guardamos con access "private".
+    // La lectura se hace server-side con el token (ver loadData).
     await put(BLOB_KEY, JSON.stringify(data), {
-      access: "public",
+      access: "private",
       contentType: "application/json",
       addRandomSuffix: false,
+      allowOverwrite: true,
       cacheControlMaxAge: 0,
     });
     return;
@@ -32,7 +35,11 @@ export async function loadData(): Promise<DataPayload | null> {
     const { blobs } = await list({ prefix: BLOB_KEY });
     const blob = blobs.find((b) => b.pathname === BLOB_KEY) ?? blobs[0];
     if (!blob) return null;
-    const res = await fetch(blob.url, { cache: "no-store" });
+    // Store privado: el contenido se descarga autenticando con el token.
+    const res = await fetch(blob.url, {
+      headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
+      cache: "no-store",
+    });
     if (!res.ok) return null;
     return (await res.json()) as DataPayload;
   }

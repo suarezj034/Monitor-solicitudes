@@ -31,7 +31,11 @@ Abrí <http://localhost:3000> (vista) y <http://localhost:3000/admin> (ingesta).
 
 1. Subí el repo a GitHub e **importalo** en [vercel.com/new](https://vercel.com/new).
 2. En el proyecto de Vercel → **Storage** → creá un **Blob Store** y conectalo al proyecto.
-   Esto agrega automáticamente la variable `BLOB_READ_WRITE_TOKEN`.
+   - Los stores nuevos de Vercel son **privados**; la app guarda con `access: "private"`
+     y lee el contenido server-side autenticando con el token (nunca expone la URL al cliente).
+   - El store **no** agrega solo la variable del token. Copiala de la pestaña **`.env.local`**
+     del store (empieza con `vercel_blob_rw_`) y agregala manualmente como `BLOB_READ_WRITE_TOKEN`
+     (¡cuidado con el nombre exacto: `WRITE`, no `WHITE`!).
 3. En **Settings → Environment Variables** agregá:
    - `VIEW_USER` = usuario compartido para los clientes (login de la web).
    - `VIEW_PASSWORD` = contraseña compartida para los clientes.
