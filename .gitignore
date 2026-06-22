@@ -1,0 +1,39 @@
+# dependencies
+/node_modules
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+
+# local env files
+.env*.local
+.env
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# datos locales (fallback de desarrollo)
+/.data
+
+# archivos temporales de prueba (logs/cookies del server local)
+.data-*
+
+# archivo fuente: se carga vía la UI de admin, no se versiona
+SOLICITUDES.xlsx
+
+# script ajeno al proyecto
+install.cmd
