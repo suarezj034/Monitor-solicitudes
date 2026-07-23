@@ -40,6 +40,11 @@ export default function Home() {
     setLoading(true);
     try {
       const res = await fetch("/api/solicitudes", { cache: "no-store" });
+      if (res.status === 403) {
+        // La habilitación de sector venció: volver a pedir el código.
+        window.location.href = "/sector";
+        return;
+      }
       const json: DataPayload = await res.json();
       setData(json);
     } finally {
@@ -50,6 +55,11 @@ export default function Home() {
   async function logout() {
     await fetch("/api/logout", { method: "POST" });
     window.location.href = "/login";
+  }
+
+  async function cambiarSector() {
+    await fetch("/api/sector", { method: "DELETE" });
+    window.location.href = "/sector";
   }
 
   useEffect(() => {
@@ -77,6 +87,9 @@ export default function Home() {
     }
     return rows;
   }, [data, sector, search]);
+
+  /** true = código maestro: puede ver y filtrar todos los sectores. */
+  const esMaestro = data?.sectorActivo === "*";
 
   const conteoEstados = useMemo(() => {
     const m = new Map<string, number>();
@@ -119,6 +132,13 @@ export default function Home() {
               Actualizar
             </button>
             <button
+              onClick={cambiarSector}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50"
+              title="Elegir otro sector"
+            >
+              Cambiar sector
+            </button>
+            <button
               onClick={logout}
               className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50"
               title="Cerrar sesión"
@@ -132,9 +152,16 @@ export default function Home() {
       <main className="mx-auto max-w-6xl px-4 py-8 sm:py-10">
         {/* Encabezado */}
         <header className="mb-6">
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-            Solicitudes de compra
-          </h1>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+              Solicitudes de compra
+            </h1>
+            {data?.sectorActivo && (
+              <span className="inline-flex items-center rounded-full bg-brand-100 px-3 py-1 text-sm font-semibold text-brand-800 ring-1 ring-inset ring-brand-200">
+                {esMaestro ? "Todos los sectores" : data.sectorActivo}
+              </span>
+            )}
+          </div>
           <p className="mt-1 text-sm text-slate-500">
             {actualizado
               ? `Última actualización: ${actualizado}`
@@ -163,23 +190,27 @@ export default function Home() {
 
         {/* Controles */}
         <div className="mb-4 flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-end">
-          <div className="flex flex-col sm:w-64">
-            <label className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Sector
-            </label>
-            <select
-              value={sector}
-              onChange={(e) => setSector(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"
-            >
-              <option value="__todos__">Todos los sectores</option>
-              {sectores.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* El desplegable de sector solo tiene sentido con el código maestro:
+              los demás ya vienen filtrados desde el servidor. */}
+          {esMaestro && (
+            <div className="flex flex-col sm:w-64">
+              <label className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Sector
+              </label>
+              <select
+                value={sector}
+                onChange={(e) => setSector(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"
+              >
+                <option value="__todos__">Todos los sectores</option>
+                {sectores.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="flex flex-1 flex-col">
             <label className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">

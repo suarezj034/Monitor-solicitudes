@@ -1,5 +1,5 @@
 import * as XLSX from "xlsx";
-import { normalizeSector } from "./normalize";
+import { clasificarSector, resolverPorSolicitante } from "./normalize";
 import type { Solicitud } from "./types";
 
 const SHEET_NAME = "SOLICITUDES DE COMPRA";
@@ -8,13 +8,24 @@ function norm(v: unknown): string {
   return String(v ?? "").replace(/\s+/g, " ").trim();
 }
 
+interface FilaCruda {
+  nombre: string;
+  sectorRaw: string;
+  nroSolicitud: string;
+  detalle: string;
+  estado: string;
+  oc: string;
+}
+
 /**
- * Parsea el buffer de un .xlsx, lee la hoja "SOLICITUDES DE COMPRA" y devuelve
- * solo las columnas que interesan: SECTOR, DETALLE, ESTADO y OC.
+ * Parsea el .xlsx (hoja "SOLICITUDES DE COMPRA") y devuelve las columnas de
+ * interés con el sector ya normalizado.
  *
- * El encabezado no está en la primera fila, así que lo localizamos buscando la
- * fila que contiene SECTOR + DETALLE + ESTADO y mapeamos columnas por nombre
- * (más robusto que asumir posiciones fijas).
+ * Se hace en dos pasadas:
+ *   1) se leen todas las filas y se calcula, por persona, en qué sector real
+ *      carga la mayoría de sus solicitudes;
+ *   2) las filas con sector ambiguo (proyectos, "solicitud vieja") se asignan
+ *      al sector dominante de quien las pidió.
  */
 export function parseSolicitudes(buf: ArrayBuffer): Solicitud[] {
   const wb = XLSX.read(buf, { type: "array" });
@@ -53,31 +64,70 @@ export function parseSolicitudes(buf: ArrayBuffer): Solicitud[] {
   const header = (rows[headerIdx] ?? []).map((c) => norm(c).toUpperCase());
   const idx = (name: string) => header.indexOf(name);
   const iNro = header.findIndex((h) => h.includes("SOLICITUD(SECTOR)"));
+  const iNombre = idx("NOMBRE");
   const iSector = idx("SECTOR");
   const iDetalle = idx("DETALLE");
   const iEstado = idx("ESTADO");
   const iOc = idx("OC");
 
-  const out: Solicitud[] = [];
+  // --- Pasada 1: leer filas ---
+  const crudas: FilaCruda[] = [];
   for (let i = headerIdx + 1; i < rows.length; i++) {
     const r = rows[i] ?? [];
-    const nroSolicitud = iNro >= 0 ? norm(r[iNro]) : "";
-    const sectorRaw = norm(r[iSector]);
-    const detalle = norm(r[iDetalle]);
-    const estado = norm(r[iEstado]).toUpperCase();
-    const oc = iOc >= 0 ? norm(r[iOc]) : "";
-
+    const fila: FilaCruda = {
+      nombre: iNombre >= 0 ? norm(r[iNombre]) : "",
+      sectorRaw: norm(r[iSector]),
+      nroSolicitud: iNro >= 0 ? norm(r[iNro]) : "",
+      detalle: norm(r[iDetalle]),
+      estado: norm(r[iEstado]).toUpperCase(),
+      oc: iOc >= 0 ? norm(r[iOc]) : "",
+    };
     // Saltar filas totalmente vacías en las columnas de interés.
-    if (!nroSolicitud && !sectorRaw && !detalle && !estado && !oc) continue;
-
-    out.push({
-      nroSolicitud,
-      sector: normalizeSector(sectorRaw),
-      detalle,
-      estado,
-      oc,
-    });
+    if (
+      !fila.nroSolicitud &&
+      !fila.sectorRaw &&
+      !fila.detalle &&
+      !fila.estado &&
+      !fila.oc
+    ) {
+      continue;
+    }
+    crudas.push(fila);
   }
 
-  return out;
+  // --- Sector dominante por persona (solo con sectores reales) ---
+  const conteo = new Map<string, Map<string, number>>();
+  for (const f of crudas) {
+    const sector = clasificarSector(f.sectorRaw);
+    if (!sector) continue;
+    const persona = f.nombre.toUpperCase();
+    if (!conteo.has(persona)) conteo.set(persona, new Map());
+    const m = conteo.get(persona)!;
+    m.set(sector, (m.get(sector) ?? 0) + 1);
+  }
+
+  const dominante = (nombre: string): string | null => {
+    const m = conteo.get(nombre.toUpperCase());
+    if (!m || m.size === 0) return null;
+    let mejor: string | null = null;
+    let max = -1;
+    for (const [sector, c] of m) {
+      if (c > max) {
+        max = c;
+        mejor = sector;
+      }
+    }
+    return mejor;
+  };
+
+  // --- Pasada 2: resolver ambiguos ---
+  return crudas.map((f) => ({
+    nroSolicitud: f.nroSolicitud,
+    sector:
+      clasificarSector(f.sectorRaw) ??
+      resolverPorSolicitante(f.nombre, dominante(f.nombre)),
+    detalle: f.detalle,
+    estado: f.estado,
+    oc: f.oc,
+  }));
 }
