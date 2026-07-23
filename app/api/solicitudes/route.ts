@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { loadData } from "@/lib/storage";
 import { readSectorToken, SECTOR_COOKIE, TODOS_LOS_SECTORES } from "@/lib/auth";
+import { claveSector } from "@/lib/normalize";
 import type { DataPayload } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -26,10 +27,11 @@ export async function GET(req: NextRequest) {
 
   // IMPORTANTE: el filtrado se hace acá, en el servidor. Al navegador solo
   // viajan las filas del sector habilitado.
+  const objetivo = claveSector(sectorHabilitado);
   const filas =
     sectorHabilitado === TODOS_LOS_SECTORES
       ? base.filas
-      : base.filas.filter((f) => f.sector === sectorHabilitado);
+      : base.filas.filter((f) => claveSector(f.sector) === objetivo);
 
   const payload: DataPayload = {
     actualizado: base.actualizado,

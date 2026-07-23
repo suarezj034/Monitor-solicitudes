@@ -1,5 +1,10 @@
 import * as XLSX from "xlsx";
-import { clasificarSector, resolverPorSolicitante } from "./normalize";
+import {
+  clasificarSector,
+  esProyecto,
+  etiquetaDesconocida,
+  resolverPorSolicitante,
+} from "./normalize";
 import type { Solicitud } from "./types";
 
 const SHEET_NAME = "SOLICITUDES DE COMPRA";
@@ -121,11 +126,25 @@ export function parseSolicitudes(buf: ArrayBuffer): Solicitud[] {
   };
 
   // --- Pasada 2: resolver ambiguos ---
+  const resolver = (f: FilaCruda): string => {
+    // 1) Sector real reconocido.
+    const canon = clasificarSector(f.sectorRaw);
+    if (canon) return canon;
+
+    // 2) Proyecto ("Solicitud vieja", INAME, INVIMA, Remodelación) o celda
+    //    vacía: se asigna al sector donde esa persona pide habitualmente.
+    if (!f.sectorRaw || esProyecto(f.sectorRaw)) {
+      return resolverPorSolicitante(f.nombre, dominante(f.nombre));
+    }
+
+    // 3) Sector nuevo que todavía no conocemos: se conserva su nombre para que
+    //    quede a la vista y se le pueda dar de alta un código de acceso.
+    return etiquetaDesconocida(f.sectorRaw);
+  };
+
   return crudas.map((f) => ({
     nroSolicitud: f.nroSolicitud,
-    sector:
-      clasificarSector(f.sectorRaw) ??
-      resolverPorSolicitante(f.nombre, dominante(f.nombre)),
+    sector: resolver(f),
     detalle: f.detalle,
     estado: f.estado,
     oc: f.oc,
