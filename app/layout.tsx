@@ -4,6 +4,13 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Monitor de Solicitudes",
   description: "Estado de las solicitudes de compra",
+  // Sitio privado: fuera de buscadores.
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: { index: false, follow: false },
+  },
 };
 
 export default function RootLayout({

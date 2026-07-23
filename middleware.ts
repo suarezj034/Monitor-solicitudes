@@ -53,6 +53,6 @@ export async function middleware(req: NextRequest) {
 export const config = {
   // Protege todo menos: estáticos, login, API de login y los assets del logo.
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|icon.svg|dromex-logo.svg|login|api/login).*)",
+    "/((?!_next/static|_next/image|favicon.ico|icon.svg|robots.txt|dromex-logo.svg|login|api/login).*)",
   ],
 };
