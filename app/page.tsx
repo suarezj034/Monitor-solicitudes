@@ -24,6 +24,18 @@ function EstadoBadge({ estado }: { estado: string }) {
   );
 }
 
+/** Nombre corto para el botón de un adjunto: el nombre del archivo si se puede. */
+function nombreAdjunto(url: string, i: number): string {
+  try {
+    const u = new URL(url);
+    const seg = decodeURIComponent(u.pathname.split("/").filter(Boolean).pop() || "");
+    if (seg && /\.[a-z0-9]{2,5}$/i.test(seg)) return seg;
+  } catch {
+    /* URL rara: caemos al genérico */
+  }
+  return `Adjunto ${i + 1}`;
+}
+
 /** Devuelve las primeras `max` palabras del detalle, con … si fue recortado. */
 function resumirDetalle(texto: string, max = 7): string {
   const palabras = texto.split(/\s+/).filter(Boolean);
@@ -286,18 +298,19 @@ export default function Home() {
                   <th className="px-4 py-3 text-left font-semibold">Estado</th>
                   <th className="px-4 py-3 text-left font-semibold">OC</th>
                   <th className="px-4 py-3 text-left font-semibold">Fecha estimada de recepción</th>
+                  <th className="px-4 py-3 text-left font-semibold">Adjuntos</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-12 text-center text-slate-400">
+                    <td colSpan={7} className="px-4 py-12 text-center text-slate-400">
                       Cargando…
                     </td>
                   </tr>
                 ) : filas.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-12 text-center text-slate-400">
+                    <td colSpan={7} className="px-4 py-12 text-center text-slate-400">
                       No hay solicitudes para mostrar.
                     </td>
                   </tr>
@@ -324,6 +337,32 @@ export default function Home() {
                       </td>
                       <td className="whitespace-nowrap border-b border-slate-100 px-4 py-3 text-slate-700">
                         {f.fechaRecepcion || "—"}
+                      </td>
+                      <td className="border-b border-slate-100 px-4 py-3">
+                        {f.adjuntos.length === 0 ? (
+                          <span className="text-slate-300">—</span>
+                        ) : (
+                          <div className="flex flex-wrap gap-1.5">
+                            {f.adjuntos.map((url, k) => {
+                              const nombre = nombreAdjunto(url, k);
+                              return (
+                                <a
+                                  key={k}
+                                  href={url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title={nombre}
+                                  className="inline-flex max-w-[11rem] items-center gap-1 rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-700 transition hover:border-brand-300 hover:bg-brand-50 hover:text-brand-800"
+                                >
+                                  <span aria-hidden="true">📎</span>
+                                  <span className="truncate">
+                                    {f.adjuntos.length > 1 ? `Adjunto ${k + 1}` : "Ver adjunto"}
+                                  </span>
+                                </a>
+                              );
+                            })}
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))

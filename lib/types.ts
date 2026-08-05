@@ -5,6 +5,8 @@ export interface Solicitud {
   estado: string;
   oc: string;
   fechaRecepcion: string;
+  /** URLs de archivos adjuntos (0, 1 o varias). */
+  adjuntos: string[];
 }
 
 export interface DataPayload {

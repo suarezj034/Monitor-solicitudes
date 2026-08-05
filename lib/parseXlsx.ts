@@ -23,6 +23,14 @@ function formatFecha(v: unknown): string {
   return norm(v);
 }
 
+/** Extrae las URLs de una celda (una o varias separadas por ";"). */
+function parseAdjuntos(v: unknown): string[] {
+  return norm(v)
+    .split(";")
+    .map((s) => s.trim())
+    .filter((s) => /^https?:\/\//i.test(s));
+}
+
 interface FilaCruda {
   nombre: string;
   sectorRaw: string;
@@ -31,6 +39,7 @@ interface FilaCruda {
   estado: string;
   oc: string;
   fechaRecepcion: string;
+  adjuntos: string[];
 }
 
 /**
@@ -91,6 +100,28 @@ export function parseSolicitudes(buf: ArrayBuffer): Solicitud[] {
     (h) => h.includes("FECHA ESTIMADA") && h.includes("RECEP")
   );
 
+  // Columna de adjuntos: el encabezado no es confiable (Forms deja los archivos
+  // en una columna mal rotulada), así que la detectamos por CONTENIDO: la que
+  // tiene más celdas que son una URL. Se excluyen las columnas ya mapeadas
+  // (DETALLE puede traer links dentro del texto).
+  const conocidas = new Set(
+    [iNro, iNombre, iSector, iDetalle, iEstado, iOc, iFechaRecep].filter((x) => x >= 0)
+  );
+  const anchoMax = rows.reduce((m, r) => Math.max(m, (r ?? []).length), 0);
+  let iAdjuntos = -1;
+  let mejorConteo = 0;
+  for (let c = 0; c < anchoMax; c++) {
+    if (conocidas.has(c)) continue;
+    let count = 0;
+    for (let i = headerIdx + 1; i < rows.length; i++) {
+      if (/^https?:\/\//i.test(norm((rows[i] ?? [])[c]))) count++;
+    }
+    if (count > mejorConteo) {
+      mejorConteo = count;
+      iAdjuntos = c;
+    }
+  }
+
   // --- Pasada 1: leer filas ---
   const crudas: FilaCruda[] = [];
   for (let i = headerIdx + 1; i < rows.length; i++) {
@@ -103,6 +134,7 @@ export function parseSolicitudes(buf: ArrayBuffer): Solicitud[] {
       estado: norm(r[iEstado]).toUpperCase(),
       oc: iOc >= 0 ? norm(r[iOc]) : "",
       fechaRecepcion: iFechaRecep >= 0 ? formatFecha(r[iFechaRecep]) : "",
+      adjuntos: iAdjuntos >= 0 ? parseAdjuntos(r[iAdjuntos]) : [],
     };
     // Saltar filas totalmente vacías en las columnas de interés.
     if (
@@ -166,5 +198,6 @@ export function parseSolicitudes(buf: ArrayBuffer): Solicitud[] {
     estado: f.estado,
     oc: f.oc,
     fechaRecepcion: f.fechaRecepcion,
+    adjuntos: f.adjuntos,
   }));
 }
