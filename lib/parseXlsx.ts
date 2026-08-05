@@ -13,6 +13,16 @@ function norm(v: unknown): string {
   return String(v ?? "").replace(/\s+/g, " ").trim();
 }
 
+/** Formatea una fecha (dd/mm/aaaa). Si no es fecha, devuelve el texto tal cual. */
+function formatFecha(v: unknown): string {
+  if (v instanceof Date && !isNaN(v.getTime())) {
+    const d = String(v.getDate()).padStart(2, "0");
+    const m = String(v.getMonth() + 1).padStart(2, "0");
+    return `${d}/${m}/${v.getFullYear()}`;
+  }
+  return norm(v);
+}
+
 interface FilaCruda {
   nombre: string;
   sectorRaw: string;
@@ -20,6 +30,7 @@ interface FilaCruda {
   detalle: string;
   estado: string;
   oc: string;
+  fechaRecepcion: string;
 }
 
 /**
@@ -33,7 +44,8 @@ interface FilaCruda {
  *      al sector dominante de quien las pidió.
  */
 export function parseSolicitudes(buf: ArrayBuffer): Solicitud[] {
-  const wb = XLSX.read(buf, { type: "array" });
+  // cellDates: las celdas de fecha llegan como Date (para formatearlas bien).
+  const wb = XLSX.read(buf, { type: "array", cellDates: true });
   const sheet = wb.Sheets[SHEET_NAME];
   if (!sheet) {
     throw new Error(
@@ -74,6 +86,10 @@ export function parseSolicitudes(buf: ArrayBuffer): Solicitud[] {
   const iDetalle = idx("DETALLE");
   const iEstado = idx("ESTADO");
   const iOc = idx("OC");
+  // "Fecha estimada Recep" (columna nueva, puede venir vacía).
+  const iFechaRecep = header.findIndex(
+    (h) => h.includes("FECHA ESTIMADA") && h.includes("RECEP")
+  );
 
   // --- Pasada 1: leer filas ---
   const crudas: FilaCruda[] = [];
@@ -86,6 +102,7 @@ export function parseSolicitudes(buf: ArrayBuffer): Solicitud[] {
       detalle: norm(r[iDetalle]),
       estado: norm(r[iEstado]).toUpperCase(),
       oc: iOc >= 0 ? norm(r[iOc]) : "",
+      fechaRecepcion: iFechaRecep >= 0 ? formatFecha(r[iFechaRecep]) : "",
     };
     // Saltar filas totalmente vacías en las columnas de interés.
     if (
@@ -148,5 +165,6 @@ export function parseSolicitudes(buf: ArrayBuffer): Solicitud[] {
     detalle: f.detalle,
     estado: f.estado,
     oc: f.oc,
+    fechaRecepcion: f.fechaRecepcion,
   }));
 }

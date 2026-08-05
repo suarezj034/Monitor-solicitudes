@@ -4,6 +4,7 @@ export interface Solicitud {
   detalle: string;
   estado: string;
   oc: string;
+  fechaRecepcion: string;
 }
 
 export interface DataPayload {

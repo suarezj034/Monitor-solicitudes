@@ -83,7 +83,8 @@ export default function Home() {
           f.detalle.toLowerCase().includes(q) ||
           f.oc.toLowerCase().includes(q) ||
           f.estado.toLowerCase().includes(q) ||
-          f.nroSolicitud.toLowerCase().includes(q)
+          f.nroSolicitud.toLowerCase().includes(q) ||
+          f.fechaRecepcion.toLowerCase().includes(q)
       );
     }
     return rows;
@@ -284,18 +285,19 @@ export default function Home() {
                   <th className="px-4 py-3 text-left font-semibold">Detalle</th>
                   <th className="px-4 py-3 text-left font-semibold">Estado</th>
                   <th className="px-4 py-3 text-left font-semibold">OC</th>
+                  <th className="px-4 py-3 text-left font-semibold">Fecha estimada de recepción</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-12 text-center text-slate-400">
+                    <td colSpan={6} className="px-4 py-12 text-center text-slate-400">
                       Cargando…
                     </td>
                   </tr>
                 ) : filas.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-12 text-center text-slate-400">
+                    <td colSpan={6} className="px-4 py-12 text-center text-slate-400">
                       No hay solicitudes para mostrar.
                     </td>
                   </tr>
@@ -319,6 +321,9 @@ export default function Home() {
                       </td>
                       <td className="whitespace-nowrap border-b border-slate-100 px-4 py-3 font-mono text-xs text-slate-600">
                         {f.oc || "—"}
+                      </td>
+                      <td className="whitespace-nowrap border-b border-slate-100 px-4 py-3 text-slate-700">
+                        {f.fechaRecepcion || "—"}
                       </td>
                     </tr>
                   ))
