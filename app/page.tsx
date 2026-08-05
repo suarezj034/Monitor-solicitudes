@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { DataPayload, Solicitud } from "@/lib/types";
+import { FORM_COMPRAS_URL, FORM_TRANSPORTE_URL } from "@/lib/forms";
 
 const ESTADO_STYLES: Record<string, string> = {
   PENDIENTE: "bg-amber-100 text-amber-800 ring-amber-200",
@@ -168,6 +169,52 @@ export default function Home() {
               : "Aún no hay datos cargados."}
           </p>
         </header>
+
+        {/* Accesos a los formularios */}
+        <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Formularios
+          </p>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <a
+              href={FORM_COMPRAS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex flex-1 items-center gap-3 rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 transition hover:border-brand-300 hover:bg-brand-100"
+            >
+              <span className="text-2xl" aria-hidden="true">
+                🛒
+              </span>
+              <span className="flex flex-col">
+                <span className="text-sm font-semibold text-brand-800">
+                  Solicitud de compra
+                </span>
+                <span className="text-xs text-brand-700/70">
+                  Abrir formulario ↗
+                </span>
+              </span>
+            </a>
+
+            <a
+              href={FORM_TRANSPORTE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex flex-1 items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 transition hover:border-amber-300 hover:bg-amber-100"
+            >
+              <span className="text-2xl" aria-hidden="true">
+                🚚
+              </span>
+              <span className="flex flex-col">
+                <span className="text-sm font-semibold text-amber-800">
+                  Pedido de transporte
+                </span>
+                <span className="text-xs text-amber-700/70">
+                  Abrir formulario ↗
+                </span>
+              </span>
+            </a>
+          </div>
+        </div>
 
         {/* Resumen por estado */}
         {conteoEstados.length > 0 && (
