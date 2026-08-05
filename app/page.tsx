@@ -59,7 +59,19 @@ export default function Home() {
         return;
       }
       const json: DataPayload = await res.json();
-      setData(json);
+      // Blindaje: datos cargados con versiones anteriores pueden no traer
+      // fechaRecepcion/adjuntos. Se completan con valores seguros para no
+      // romper la vista hasta que se resuba el Excel.
+      const filas = (json.filas ?? []).map((f) => ({
+        nroSolicitud: f.nroSolicitud ?? "",
+        sector: f.sector ?? "",
+        detalle: f.detalle ?? "",
+        estado: f.estado ?? "",
+        oc: f.oc ?? "",
+        fechaRecepcion: f.fechaRecepcion ?? "",
+        adjuntos: Array.isArray(f.adjuntos) ? f.adjuntos : [],
+      }));
+      setData({ ...json, filas });
     } finally {
       setLoading(false);
     }
