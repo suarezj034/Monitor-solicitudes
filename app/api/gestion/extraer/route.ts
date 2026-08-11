@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
   let errorIA: string | null = null;
   if (quiereLeer) {
     if (!IA_HABILITADA()) {
-      errorIA = "La lectura con IA no está configurada (falta ANTHROPIC_API_KEY).";
+      errorIA = "La lectura con IA no está configurada (falta GEMINI_API_KEY).";
     } else if (!TIPOS_OK.has(tipo)) {
       errorIA = "La IA solo lee PDF o imágenes (PNG, JPG, WEBP, GIF).";
     } else {

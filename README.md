@@ -6,7 +6,7 @@ App simple para monitorear el estado de las solicitudes de compra a partir de un
 - **Selección de sector** (`/sector`): cada sector ingresa su **código de acceso**; el maestro ve todos.
 - **Vista de clientes** (`/`): tabla de solo lectura con **Nº (sector)**, **Sector**, **Detalle**, **Estado** y **OC**.
 - **Ingesta de admin** (`/admin`): subida del archivo `SOLICITUDES.xlsx` (protegida por contraseña de admin).
-- **Gestión de compras** (`/gestion`): carga de presupuestos/facturas/remitos por solicitud, comparación de cotizaciones (proveedor, monto, plazos) con ahorro potencial, y lectura opcional de documentos con IA (Opus 4.8). Protegida por la contraseña de admin. Los presupuestos viven en un almacén aparte (`presupuestos.json`) que **sobrevive a cada subida del Excel**.
+- **Gestión de compras** (`/gestion`): carga de presupuestos/facturas/remitos por solicitud, comparación de cotizaciones (proveedor, monto, plazos) con ahorro potencial, y lectura opcional de documentos con IA (Google Gemini, nivel gratuito). Protegida por la contraseña de admin. Los presupuestos viven en un almacén aparte (`presupuestos.json`) que **sobrevive a cada subida del Excel**.
 
 Todo el sitio queda detrás del login; el `/admin` además pide la contraseña de admin para subir.
 
@@ -59,7 +59,7 @@ Abrí <http://localhost:3000> (vista) y <http://localhost:3000/admin> (ingesta).
    - `SECTOR_CODES` = códigos por sector, formato `SECTOR:CODIGO` separados por coma.
    - `MASTER_CODE` = código que habilita ver todos los sectores.
    - `ADMIN_PASSWORD` = contraseña para `/admin` (subir el `.xlsx`) y `/gestion`.
-   - `ANTHROPIC_API_KEY` (opcional) = habilita "Leer con IA" (Opus 4.8) en `/gestion`. Sin ella, la gestión funciona con carga manual.
+   - `GEMINI_API_KEY` (opcional) = habilita "Leer con IA" (Google Gemini) en `/gestion`. Se obtiene gratis en https://aistudio.google.com/apikey. Sin ella, la gestión funciona con carga manual.
 4. **Deploy**. Listo.
 
 ### Cómo se usa

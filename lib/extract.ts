@@ -1,6 +1,9 @@
 import type { DatosExtraidos } from "./types";
 
-export const IA_HABILITADA = () => !!process.env.ANTHROPIC_API_KEY;
+/** La lectura con IA usa Google Gemini (nivel gratuito). */
+export const IA_HABILITADA = () => !!process.env.GEMINI_API_KEY;
+
+const MODELO = "gemini-2.5-flash";
 
 const SISTEMA = `Sos un asistente de compras. Te paso un documento (presupuesto, factura o remito de un proveedor) y extraés los datos clave.
 Respondé ÚNICAMENTE con un objeto JSON válido, sin texto adicional, sin markdown, con exactamente estas claves:
@@ -15,49 +18,70 @@ Respondé ÚNICAMENTE con un objeto JSON válido, sin texto adicional, sin markd
 }
 Si un dato no aparece, poné "" (o null en monto). No inventes valores.`;
 
-interface Bloque {
-  type: "document" | "image";
-  source: {
-    type: "base64";
-    media_type: string;
-    data: string;
-  };
-}
-
-/** Lee un documento con Opus 4.8 y devuelve los datos estructurados. */
+/** Lee un documento con Gemini y devuelve los datos estructurados. */
 export async function extraerDatos(
   base64: string,
   mediaType: string
 ): Promise<DatosExtraidos> {
-  if (!IA_HABILITADA()) {
-    throw new Error("La lectura con IA no está configurada (falta ANTHROPIC_API_KEY).");
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("La lectura con IA no está configurada (falta GEMINI_API_KEY).");
   }
 
-  const { default: Anthropic } = await import("@anthropic-ai/sdk");
-  const client = new Anthropic();
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODELO}:generateContent`;
 
-  const esPdf = mediaType === "application/pdf";
-  const bloque: Bloque = esPdf
-    ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } }
-    : { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } };
-
-  const res = await client.messages.create({
-    model: "claude-opus-4-8",
-    max_tokens: 1024,
-    system: SISTEMA,
-    messages: [
+  const body = {
+    system_instruction: { parts: [{ text: SISTEMA }] },
+    contents: [
       {
         role: "user",
-        // @ts-expect-error: los bloques document/image son válidos en el runtime del SDK
-        content: [bloque, { type: "text", text: "Extraé los datos de este documento." }],
+        parts: [
+          { inline_data: { mime_type: mediaType, data: base64 } },
+          { text: "Extraé los datos de este documento." },
+        ],
       },
     ],
+    generationConfig: {
+      temperature: 0,
+      responseMimeType: "application/json",
+    },
+  };
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey,
+    },
+    body: JSON.stringify(body),
   });
 
-  const texto = res.content
-    .map((b) => ("text" in b ? b.text : ""))
-    .join("")
-    .trim();
+  if (!res.ok) {
+    let detalle = "";
+    try {
+      const err = await res.json();
+      detalle = err?.error?.message ? `: ${err.error.message}` : "";
+    } catch {
+      /* sin cuerpo */
+    }
+    throw new Error(`Gemini respondió ${res.status}${detalle}`);
+  }
+
+  const json = (await res.json()) as {
+    candidates?: { content?: { parts?: { text?: string }[] } }[];
+    promptFeedback?: { blockReason?: string };
+  };
+
+  if (json.promptFeedback?.blockReason) {
+    throw new Error(`Gemini bloqueó el documento (${json.promptFeedback.blockReason}).`);
+  }
+
+  const texto =
+    json.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("").trim() ?? "";
+
+  if (!texto) {
+    throw new Error("Gemini no devolvió datos legibles del documento.");
+  }
 
   return parseJson(texto);
 }
