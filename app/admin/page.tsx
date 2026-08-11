@@ -107,7 +107,10 @@ export default function AdminPage() {
         )}
       </form>
 
-      <p className="mt-4 text-center text-sm">
+      <p className="mt-4 flex flex-wrap justify-center gap-x-6 gap-y-2 text-center text-sm">
+        <a href="/gestion" className="font-medium text-brand-700 underline hover:text-brand-800">
+          Gestión de compras (presupuestos) →
+        </a>
         <a href="/" className="font-medium text-brand-700 underline hover:text-brand-800">
           Ver la vista de solicitudes →
         </a>

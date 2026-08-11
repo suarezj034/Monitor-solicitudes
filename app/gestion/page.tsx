@@ -1,0 +1,564 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import type { DatosExtraidos, Presupuesto } from "@/lib/types";
+
+const MONEDAS = ["ARS", "USD", "EUR"];
+
+const vacio = (nro = ""): Partial<Presupuesto> => ({
+  id: "",
+  nroSolicitud: nro,
+  proveedor: "",
+  monto: null,
+  moneda: "ARS",
+  plazoEntrega: "",
+  plazoPago: "",
+  validez: "",
+  detalle: "",
+  notas: "",
+  archivoKey: "",
+  archivoNombre: "",
+});
+
+function fmtMonto(monto: number | null, moneda: string): string {
+  if (monto == null) return "—";
+  try {
+    return new Intl.NumberFormat("es-AR", {
+      style: "currency",
+      currency: moneda || "ARS",
+      maximumFractionDigits: 2,
+    }).format(monto);
+  } catch {
+    return `${moneda} ${monto.toLocaleString("es-AR")}`;
+  }
+}
+
+export default function GestionPage() {
+  const [pass, setPass] = useState("");
+  const [authed, setAuthed] = useState(false);
+  const [iaHabilitada, setIaHabilitada] = useState(false);
+  const [presupuestos, setPresupuestos] = useState<Presupuesto[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const [form, setForm] = useState<Partial<Presupuesto>>(vacio());
+  const [subiendo, setSubiendo] = useState(false);
+  const [avisoIA, setAvisoIA] = useState<string | null>(null);
+  const [okMsg, setOkMsg] = useState<string | null>(null);
+  const [verSolicitud, setVerSolicitud] = useState("");
+
+  const authHeaders = { "x-admin-password": pass };
+
+  async function ingresar(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/gestion", { headers: authHeaders, cache: "no-store" });
+      const json = await res.json();
+      if (!res.ok) {
+        setError(json.error ?? "No se pudo ingresar.");
+        return;
+      }
+      setPresupuestos(json.presupuestos ?? []);
+      setIaHabilitada(!!json.iaHabilitada);
+      setAuthed(true);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function recargar() {
+    const res = await fetch("/api/gestion", { headers: authHeaders, cache: "no-store" });
+    const json = await res.json();
+    if (res.ok) setPresupuestos(json.presupuestos ?? []);
+  }
+
+  function set<K extends keyof Presupuesto>(k: K, v: Presupuesto[K]) {
+    setForm((f) => ({ ...f, [k]: v }));
+  }
+
+  async function subirArchivo(file: File, leer: boolean) {
+    setSubiendo(true);
+    setAvisoIA(null);
+    try {
+      const fd = new FormData();
+      fd.append("password", pass);
+      fd.append("file", file);
+      if (leer) fd.append("leer", "1");
+      const res = await fetch("/api/gestion/extraer", { method: "POST", body: fd });
+      const json = await res.json();
+      if (!res.ok) {
+        setAvisoIA(json.error ?? "No se pudo subir el archivo.");
+        return;
+      }
+      set("archivoKey", json.archivoKey ?? "");
+      set("archivoNombre", json.archivoNombre ?? file.name);
+      if (json.errorIA) setAvisoIA(json.errorIA);
+      if (json.datos) {
+        const d = json.datos as DatosExtraidos;
+        setForm((f) => ({
+          ...f,
+          proveedor: d.proveedor || f.proveedor,
+          monto: d.monto ?? f.monto,
+          moneda: d.moneda || f.moneda,
+          plazoEntrega: d.plazoEntrega || f.plazoEntrega,
+          plazoPago: d.plazoPago || f.plazoPago,
+          validez: d.validez || f.validez,
+          detalle: d.detalle || f.detalle,
+        }));
+        setAvisoIA("✨ Datos leídos. Revisá y corregí lo que haga falta antes de guardar.");
+      }
+    } finally {
+      setSubiendo(false);
+    }
+  }
+
+  async function guardar(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setOkMsg(null);
+    if (!form.nroSolicitud?.trim()) {
+      setError("Ingresá el Nº de solicitud.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await fetch("/api/gestion", {
+        method: "POST",
+        headers: { ...authHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setError(json.error ?? "No se pudo guardar.");
+        return;
+      }
+      setOkMsg(form.id ? "Presupuesto actualizado." : "Presupuesto guardado.");
+      const nro = form.nroSolicitud;
+      setForm(vacio(nro));
+      await recargar();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function eliminar(id: string) {
+    if (!confirm("¿Eliminar este presupuesto?")) return;
+    await fetch(`/api/gestion?id=${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers: authHeaders,
+    });
+    await recargar();
+  }
+
+  function editar(p: Presupuesto) {
+    setForm({ ...p });
+    setOkMsg(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function verArchivo(key: string) {
+    const url = `/api/gestion/archivo?key=${encodeURIComponent(key)}&password=${encodeURIComponent(pass)}`;
+    window.open(url, "_blank", "noopener");
+  }
+
+  // Agrupar por Nº de solicitud.
+  const grupos = useMemo(() => {
+    const norm = (s: string) => s.replace(/\s+/g, " ").trim();
+    const map = new Map<string, Presupuesto[]>();
+    for (const p of presupuestos) {
+      const k = norm(p.nroSolicitud) || "(sin Nº)";
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push(p);
+    }
+    return Array.from(map.entries())
+      .map(([nro, items]) => {
+        const ordenados = [...items].sort(
+          (a, b) => (a.monto ?? Infinity) - (b.monto ?? Infinity)
+        );
+        const conMonto = ordenados.filter((p) => typeof p.monto === "number");
+        const barato = conMonto[0]?.monto ?? null;
+        const caro = conMonto.length ? conMonto[conMonto.length - 1].monto! : null;
+        const ahorro = barato != null && caro != null ? caro - barato : null;
+        return { nro, items: ordenados, barato, caro, ahorro };
+      })
+      .sort((a, b) => a.nro.localeCompare(b.nro, "es", { numeric: true }));
+  }, [presupuestos]);
+
+  const gruposVisibles = useMemo(() => {
+    const q = verSolicitud.replace(/\s+/g, " ").trim().toLowerCase();
+    if (!q) return grupos;
+    return grupos.filter((g) => g.nro.toLowerCase().includes(q));
+  }, [grupos, verSolicitud]);
+
+  // ---------- Login ----------
+  if (!authed) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-brand-50 to-slate-100 px-4">
+        <form
+          onSubmit={ingresar}
+          className="w-full max-w-sm space-y-5 rounded-2xl border border-slate-200 bg-white p-7 shadow-lg"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/dromex-logo.svg" alt="DROMEX SRL" className="mx-auto h-14 w-auto" />
+          <div className="text-center">
+            <h1 className="text-lg font-bold text-slate-900">Gestión de compras</h1>
+            <p className="text-sm text-slate-500">Presupuestos, proveedores y ahorros.</p>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Contraseña de administrador
+            </label>
+            <input
+              type="password"
+              value={pass}
+              onChange={(e) => setPass(e.target.value)}
+              autoComplete="current-password"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={busy}
+            className="w-full rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 disabled:opacity-50"
+          >
+            {busy ? "Ingresando…" : "Ingresar"}
+          </button>
+          {error && (
+            <div className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700 ring-1 ring-rose-200">
+              ⚠️ {error}
+            </div>
+          )}
+        </form>
+      </div>
+    );
+  }
+
+  // ---------- Panel ----------
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-brand-50 to-slate-50">
+      <div className="border-b border-slate-200 bg-white/80 backdrop-blur">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
+          <div className="flex items-center gap-4">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/dromex-logo.svg" alt="DROMEX SRL" className="h-10 w-auto" />
+            <div className="hidden sm:block">
+              <p className="text-sm font-semibold text-slate-800">Gestión de compras</p>
+              <p className="text-xs text-slate-500">
+                {presupuestos.length} presupuesto{presupuestos.length === 1 ? "" : "s"} guardado
+                {presupuestos.length === 1 ? "" : "s"}
+              </p>
+            </div>
+          </div>
+          <span
+            className={`rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ${
+              iaHabilitada
+                ? "bg-brand-100 text-brand-800 ring-brand-200"
+                : "bg-slate-100 text-slate-500 ring-slate-200"
+            }`}
+            title={iaHabilitada ? "Lectura con IA activa" : "Carga manual (sin API key)"}
+          >
+            {iaHabilitada ? "IA activa" : "Carga manual"}
+          </span>
+        </div>
+      </div>
+
+      <main className="mx-auto max-w-5xl space-y-8 px-4 py-8">
+        {/* ---- Cargar presupuesto ---- */}
+        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-bold text-slate-900">
+            {form.id ? "Editar presupuesto" : "Cargar presupuesto"}
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Arrastrá el documento{iaHabilitada ? " y leelo con IA" : ""}, revisá los datos y guardá.
+          </p>
+
+          <form onSubmit={guardar} className="mt-4 space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Campo label="Nº de solicitud *">
+                <input
+                  value={form.nroSolicitud ?? ""}
+                  onChange={(e) => set("nroSolicitud", e.target.value)}
+                  placeholder="Ej.: 128 o 2026-08"
+                  className={inputCls}
+                />
+              </Campo>
+              <Campo label="Proveedor">
+                <input
+                  value={form.proveedor ?? ""}
+                  onChange={(e) => set("proveedor", e.target.value)}
+                  className={inputCls}
+                />
+              </Campo>
+            </div>
+
+            {/* Zona de archivo */}
+            <div
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                const f = e.dataTransfer.files?.[0];
+                if (f) subirArchivo(f, iaHabilitada);
+              }}
+              className="rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 p-4 text-center"
+            >
+              <p className="text-sm text-slate-600">
+                Arrastrá un PDF o imagen acá, o
+                <label className="mx-1 cursor-pointer font-semibold text-brand-700 underline">
+                  elegí un archivo
+                  <input
+                    type="file"
+                    accept=".pdf,image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) subirArchivo(f, iaHabilitada);
+                    }}
+                  />
+                </label>
+              </p>
+              {subiendo && <p className="mt-2 text-xs text-brand-700">Procesando documento…</p>}
+              {form.archivoNombre && !subiendo && (
+                <p className="mt-2 text-xs text-slate-500">
+                  📎 {form.archivoNombre}
+                  {form.archivoKey && (
+                    <button
+                      type="button"
+                      onClick={() => verArchivo(form.archivoKey!)}
+                      className="ml-2 text-brand-700 underline"
+                    >
+                      ver
+                    </button>
+                  )}
+                </p>
+              )}
+              {iaHabilitada && !subiendo && (
+                <p className="mt-1 text-[11px] text-slate-400">
+                  La IA completa los campos; siempre podés editarlos.
+                </p>
+              )}
+            </div>
+
+            {avisoIA && (
+              <div className="rounded-lg bg-brand-50 p-3 text-sm text-brand-800 ring-1 ring-brand-200">
+                {avisoIA}
+              </div>
+            )}
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Campo label="Monto">
+                <input
+                  type="number"
+                  step="0.01"
+                  value={form.monto ?? ""}
+                  onChange={(e) =>
+                    set("monto", e.target.value === "" ? null : Number(e.target.value))
+                  }
+                  className={inputCls}
+                />
+              </Campo>
+              <Campo label="Moneda">
+                <select
+                  value={form.moneda ?? "ARS"}
+                  onChange={(e) => set("moneda", e.target.value)}
+                  className={inputCls}
+                >
+                  {MONEDAS.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              </Campo>
+              <Campo label="Validez de la oferta">
+                <input
+                  value={form.validez ?? ""}
+                  onChange={(e) => set("validez", e.target.value)}
+                  className={inputCls}
+                />
+              </Campo>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Campo label="Plazo de entrega">
+                <input
+                  value={form.plazoEntrega ?? ""}
+                  onChange={(e) => set("plazoEntrega", e.target.value)}
+                  className={inputCls}
+                />
+              </Campo>
+              <Campo label="Plazo / condición de pago">
+                <input
+                  value={form.plazoPago ?? ""}
+                  onChange={(e) => set("plazoPago", e.target.value)}
+                  className={inputCls}
+                />
+              </Campo>
+            </div>
+
+            <Campo label="Detalle">
+              <input
+                value={form.detalle ?? ""}
+                onChange={(e) => set("detalle", e.target.value)}
+                className={inputCls}
+              />
+            </Campo>
+            <Campo label="Notas internas">
+              <textarea
+                value={form.notas ?? ""}
+                onChange={(e) => set("notas", e.target.value)}
+                rows={2}
+                className={inputCls}
+              />
+            </Campo>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="submit"
+                disabled={busy}
+                className="rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 disabled:opacity-50"
+              >
+                {busy ? "Guardando…" : form.id ? "Guardar cambios" : "Guardar presupuesto"}
+              </button>
+              {form.id && (
+                <button
+                  type="button"
+                  onClick={() => setForm(vacio())}
+                  className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  Cancelar edición
+                </button>
+              )}
+              {okMsg && <span className="text-sm font-medium text-brand-700">✓ {okMsg}</span>}
+              {error && <span className="text-sm text-rose-600">⚠️ {error}</span>}
+            </div>
+          </form>
+        </section>
+
+        {/* ---- Presupuestos por solicitud ---- */}
+        <section>
+          <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-lg font-bold text-slate-900">Presupuestos por solicitud</h2>
+            <input
+              value={verSolicitud}
+              onChange={(e) => setVerSolicitud(e.target.value)}
+              placeholder="Buscar Nº de solicitud…"
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200 sm:w-64"
+            />
+          </div>
+
+          {gruposVisibles.length === 0 ? (
+            <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-400 shadow-sm">
+              No hay presupuestos cargados todavía.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {gruposVisibles.map((g) => (
+                <div
+                  key={g.nro}
+                  className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50 px-4 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-slate-800">
+                        Solicitud {g.nro}
+                      </span>
+                      <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-600">
+                        {g.items.length} {g.items.length === 1 ? "cotización" : "cotizaciones"}
+                      </span>
+                    </div>
+                    {g.ahorro != null && g.ahorro > 0 && (
+                      <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200">
+                        Ahorro potencial {fmtMonto(g.ahorro, g.items.find((i) => i.monto === g.barato)?.moneda ?? "ARS")}
+                      </span>
+                    )}
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-xs font-semibold text-slate-500">
+                          <th className="px-4 py-2">Proveedor</th>
+                          <th className="px-4 py-2">Monto</th>
+                          <th className="px-4 py-2">Entrega</th>
+                          <th className="px-4 py-2">Pago</th>
+                          <th className="px-4 py-2">Doc.</th>
+                          <th className="px-4 py-2"></th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {g.items.map((p) => {
+                          const esBarato = p.monto != null && p.monto === g.barato;
+                          return (
+                            <tr key={p.id} className={esBarato ? "bg-emerald-50/60" : ""}>
+                              <td className="px-4 py-2.5 font-medium text-slate-700">
+                                {p.proveedor || "—"}
+                                {esBarato && (
+                                  <span className="ml-2 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
+                                    MÁS BAJO
+                                  </span>
+                                )}
+                                {p.detalle && (
+                                  <div className="text-xs font-normal text-slate-400">{p.detalle}</div>
+                                )}
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-2.5 font-semibold text-slate-800">
+                                {fmtMonto(p.monto, p.moneda)}
+                              </td>
+                              <td className="px-4 py-2.5 text-slate-600">{p.plazoEntrega || "—"}</td>
+                              <td className="px-4 py-2.5 text-slate-600">{p.plazoPago || "—"}</td>
+                              <td className="px-4 py-2.5">
+                                {p.archivoKey ? (
+                                  <button
+                                    onClick={() => verArchivo(p.archivoKey)}
+                                    className="text-xs text-brand-700 underline"
+                                  >
+                                    ver
+                                  </button>
+                                ) : (
+                                  <span className="text-slate-300">—</span>
+                                )}
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-2.5 text-right">
+                                <button
+                                  onClick={() => editar(p)}
+                                  className="text-xs font-medium text-slate-500 hover:text-slate-800"
+                                >
+                                  editar
+                                </button>
+                                <button
+                                  onClick={() => eliminar(p.id)}
+                                  className="ml-3 text-xs font-medium text-rose-500 hover:text-rose-700"
+                                >
+                                  eliminar
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      </main>
+    </div>
+  );
+}
+
+const inputCls =
+  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200";
+
+function Campo({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+        {label}
+      </span>
+      {children}
+    </label>
+  );
+}

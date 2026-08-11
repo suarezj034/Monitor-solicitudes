@@ -7,7 +7,15 @@ import {
 } from "@/lib/auth";
 
 /** Rutas que solo requieren estar logueado (no hace falta elegir sector). */
-const SIN_SECTOR = ["/sector", "/admin", "/api/sector", "/api/upload", "/api/logout"];
+const SIN_SECTOR = [
+  "/sector",
+  "/admin",
+  "/gestion",
+  "/api/sector",
+  "/api/upload",
+  "/api/logout",
+  "/api/gestion",
+];
 
 export async function middleware(req: NextRequest) {
   const secret = process.env.AUTH_SECRET || "";
