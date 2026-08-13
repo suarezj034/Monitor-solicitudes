@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { DatosExtraidos, Presupuesto } from "@/lib/types";
+import { montoEnPesos } from "@/lib/moneda";
 
 const MONEDAS = ["ARS", "USD", "EUR"];
 
@@ -19,6 +20,7 @@ const vacio = (nro = ""): Partial<Presupuesto> => ({
   proveedor: "",
   monto: null,
   moneda: "ARS",
+  tipoCambio: null,
   plazoEntrega: "",
   plazoPago: "",
   validez: "",
@@ -88,6 +90,22 @@ export default function GestionPage() {
     setForm((f) => ({ ...f, [k]: v }));
   }
 
+  /** Trae el dólar venta BNA de hoy y lo carga en el formulario. */
+  async function traerCotizacion() {
+    try {
+      const res = await fetch("/api/gestion/cotizacion", {
+        headers: authHeaders,
+        cache: "no-store",
+      });
+      const j = await res.json();
+      if (res.ok && typeof j.venta === "number") {
+        setForm((f) => ({ ...f, tipoCambio: j.venta }));
+      }
+    } catch {
+      /* silencioso: se puede cargar a mano */
+    }
+  }
+
   async function subirArchivo(file: File, leer: boolean) {
     setSubiendo(true);
     setAvisoIA(null);
@@ -118,6 +136,7 @@ export default function GestionPage() {
           detalle: d.detalle || f.detalle,
         }));
         setAvisoIA("✨ Datos leídos. Revisá y corregí lo que haga falta antes de guardar.");
+        if ((d.moneda || "").toUpperCase() === "USD") traerCotizacion();
       }
     } finally {
       setSubiendo(false);
@@ -234,22 +253,35 @@ export default function GestionPage() {
       36
     );
 
-    const idxBarato = g.items.findIndex((p) => p.monto != null && p.monto === g.barato);
+    const idxBarato = g.items.findIndex(
+      (p) => montoEnPesos(p) != null && montoEnPesos(p) === g.barato
+    );
 
     autoTable(doc, {
       startY: 42,
       head: [["Proveedor", "Producto / Detalle", "Monto", "Entrega", "Pago", "Validez"]],
-      body: g.items.map((p) => [
-        p.proveedor || "—",
-        p.detalle || "—",
-        fmtMonto(p.monto, p.moneda),
-        p.plazoEntrega || "—",
-        p.plazoPago || "—",
-        p.validez || "—",
-      ]),
+      body: g.items.map((p) => {
+        const ars = montoEnPesos(p);
+        // El PDF usa una fuente sin "≈"; se usa "= $..." (sin decimales) y sin miles cortados.
+        const montoTxt =
+          p.moneda !== "ARS" && ars != null
+            ? `${fmtMonto(p.monto, p.moneda)}\n= $${Math.round(ars).toLocaleString("es-AR")}`
+            : fmtMonto(p.monto, p.moneda);
+        return [
+          p.proveedor || "—",
+          p.detalle || "—",
+          montoTxt,
+          p.plazoEntrega || "—",
+          p.plazoPago || "—",
+          p.validez || "—",
+        ];
+      }),
       styles: { fontSize: 8, cellPadding: 2, overflow: "linebreak" },
       headStyles: { fillColor: BR, textColor: 255, fontStyle: "bold" },
-      columnStyles: { 1: { cellWidth: 45 }, 2: { halign: "right" } },
+      columnStyles: {
+        1: { cellWidth: 42 },
+        2: { halign: "right", cellWidth: 30 },
+      },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       didParseCell: (data: any) => {
         if (data.section === "body" && data.row.index === idxBarato) {
@@ -260,14 +292,26 @@ export default function GestionPage() {
     });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let y = ((doc as any).lastAutoTable?.finalY ?? 60) + 9;
+    let y = ((doc as any).lastAutoTable?.finalY ?? 60) + 7;
+
+    const hayUsd = g.items.some((p) => p.moneda === "USD" && p.tipoCambio);
+    if (hayUsd) {
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(7.5);
+      doc.setTextColor(124, 143, 134);
+      doc.text(
+        "Comparación en pesos · USD convertido al dólar venta BNA de cada cotización.",
+        14,
+        y
+      );
+      y += 6;
+    }
 
     if (g.ahorro != null && g.ahorro > 0) {
-      const moneda = g.items.find((i) => i.monto === g.barato)?.moneda ?? "ARS";
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10);
       doc.setTextColor(12, 75, 54);
-      doc.text(`Ahorro potencial: ${fmtMonto(g.ahorro, moneda)}`, 14, y);
+      doc.text(`Ahorro potencial (en pesos): ${fmtMonto(g.ahorro, "ARS")}`, 14, y);
       y += 8;
     }
 
@@ -285,7 +329,7 @@ export default function GestionPage() {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
     doc.setTextColor(16, 32, 26);
-    doc.text("Análisis (evaluación IA):", 14, y);
+    doc.text("Análisis:", 14, y);
     y += 6;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9.5);
@@ -318,12 +362,16 @@ export default function GestionPage() {
     }
     return Array.from(map.entries())
       .map(([nro, items]) => {
+        // Comparación EN PESOS (USD convertido con el dólar de cada cotización).
         const ordenados = [...items].sort(
-          (a, b) => (a.monto ?? Infinity) - (b.monto ?? Infinity)
+          (a, b) => (montoEnPesos(a) ?? Infinity) - (montoEnPesos(b) ?? Infinity)
         );
-        const conMonto = ordenados.filter((p) => typeof p.monto === "number");
-        const barato = conMonto[0]?.monto ?? null;
-        const caro = conMonto.length ? conMonto[conMonto.length - 1].monto! : null;
+        const enPesos = ordenados
+          .map((p) => montoEnPesos(p))
+          .filter((v): v is number => v != null)
+          .sort((a, b) => a - b);
+        const barato = enPesos[0] ?? null;
+        const caro = enPesos.length ? enPesos[enPesos.length - 1] : null;
         const ahorro = barato != null && caro != null ? caro - barato : null;
         return { nro, items: ordenados, barato, caro, ahorro };
       })
@@ -524,6 +572,35 @@ export default function GestionPage() {
               </Campo>
             </div>
 
+            {form.moneda === "USD" && (
+              <div className="rounded-lg bg-amber-50 p-3 ring-1 ring-amber-200">
+                <Campo label="Dólar venta (BNA) al momento de cargar">
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={form.tipoCambio ?? ""}
+                      onChange={(e) =>
+                        set("tipoCambio", e.target.value === "" ? null : Number(e.target.value))
+                      }
+                      placeholder="Ej.: 1300"
+                      className={inputCls}
+                    />
+                    <button
+                      type="button"
+                      onClick={traerCotizacion}
+                      className="whitespace-nowrap rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100"
+                    >
+                      Traer de hoy
+                    </button>
+                  </div>
+                </Campo>
+                <p className="mt-1 text-[11px] text-amber-700">
+                  Se usa para convertir el monto a pesos y comparar contra cotizaciones en $.
+                </p>
+              </div>
+            )}
+
             <div className="grid gap-4 sm:grid-cols-2">
               <Campo label="Plazo de entrega">
                 <input
@@ -621,7 +698,7 @@ export default function GestionPage() {
                     <div className="flex items-center gap-2">
                       {g.ahorro != null && g.ahorro > 0 && (
                         <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200">
-                          Ahorro potencial {fmtMonto(g.ahorro, g.items.find((i) => i.monto === g.barato)?.moneda ?? "ARS")}
+                          Ahorro potencial {fmtMonto(g.ahorro, "ARS")}
                         </span>
                       )}
                       <button
@@ -652,7 +729,8 @@ export default function GestionPage() {
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {g.items.map((p) => {
-                          const esBarato = p.monto != null && p.monto === g.barato;
+                          const pesos = montoEnPesos(p);
+                          const esBarato = pesos != null && pesos === g.barato;
                           return (
                             <tr key={p.id} className={esBarato ? "bg-emerald-50/60" : ""}>
                               <td className="px-4 py-2.5 font-medium text-slate-700">
@@ -668,6 +746,16 @@ export default function GestionPage() {
                               </td>
                               <td className="whitespace-nowrap px-4 py-2.5 font-semibold text-slate-800">
                                 {fmtMonto(p.monto, p.moneda)}
+                                {p.moneda !== "ARS" && pesos != null && (
+                                  <div className="text-xs font-normal text-slate-400">
+                                    ≈ {fmtMonto(pesos, "ARS")}
+                                  </div>
+                                )}
+                                {p.moneda === "USD" && p.tipoCambio && (
+                                  <div className="text-[10px] font-normal text-slate-400">
+                                    dólar {fmtMonto(p.tipoCambio, "ARS")}
+                                  </div>
+                                )}
                               </td>
                               <td className="px-4 py-2.5 text-slate-600">{p.plazoEntrega || "—"}</td>
                               <td className="px-4 py-2.5 text-slate-600">{p.plazoPago || "—"}</td>

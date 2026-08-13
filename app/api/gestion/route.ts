@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
     proveedor: (body.proveedor ?? "").trim(),
     monto: typeof body.monto === "number" ? body.monto : null,
     moneda: (body.moneda ?? "").trim().toUpperCase(),
+    tipoCambio: typeof body.tipoCambio === "number" ? body.tipoCambio : null,
     plazoEntrega: (body.plazoEntrega ?? "").trim(),
     plazoPago: (body.plazoPago ?? "").trim(),
     validez: (body.validez ?? "").trim(),

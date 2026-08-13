@@ -28,6 +28,8 @@ export interface Presupuesto {
   proveedor: string;
   monto: number | null;
   moneda: string; // ARS | USD | ...
+  /** Dólar venta (BNA) capturado al cargar, para convertir USD a pesos. */
+  tipoCambio: number | null;
   plazoEntrega: string;
   plazoPago: string;
   validez: string;

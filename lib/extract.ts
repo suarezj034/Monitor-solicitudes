@@ -1,4 +1,5 @@
 import type { DatosExtraidos, Presupuesto } from "./types";
+import { montoEnPesos } from "./moneda";
 
 /** La lectura con IA usa Google Gemini (nivel gratuito). */
 export const IA_HABILITADA = () => !!process.env.GEMINI_API_KEY;
@@ -82,13 +83,17 @@ export async function extraerDatos(
   return parseJson(texto);
 }
 
-const SISTEMA_ANALISIS = `Sos analista de compras de un laboratorio. Te paso las cotizaciones de una misma solicitud y tenés que evaluarlas.
+const SISTEMA_ANALISIS = `Sos analista de compras de un laboratorio. Te paso las cotizaciones de una misma solicitud, con el monto ya convertido a PESOS argentinos.
 Respondé ÚNICAMENTE con un objeto JSON válido, sin markdown, con estas claves:
 {
-  "recomendado": string,   // razón social del proveedor más conveniente considerando precio, plazo de entrega y condición de pago
-  "analisis": string       // UNA o dos líneas analíticas evaluando las cotizaciones: mencioná el ahorro concreto y por qué conviene esa opción
+  "recomendado": string,   // SOLO la razón social del proveedor elegido, sin verbos ni frases (ej.: "DISCAMP")
+  "analisis": string       // UNA sola oración de máximo 20 palabras
 }
-Escribí en español rioplatense, conciso y objetivo. No inventes datos que no estén en las cotizaciones.`;
+Reglas de decisión:
+- El criterio PRINCIPAL es el menor monto EN PESOS. Recomendá al más barato en pesos, salvo que tenga una desventaja clara y GRAVE en entrega o pago.
+- El plazo de entrega puede venir como texto ("7 días") o como fecha concreta ("24/08/2026"). Una fecha del mes en curso o cercana es un plazo CORTO; NO la interpretes como meses o años, ni la penalices como "plazo largo".
+- No inventes duraciones ni datos que no figuran.
+- Mencioná el ahorro concreto en pesos. Español rioplatense. UNA sola oración breve, sin repetir "recomendado".`;
 
 export interface AnalisisCompra {
   recomendado: string;
@@ -101,24 +106,31 @@ export async function analizarCompra(
   nroSolicitud: string
 ): Promise<AnalisisCompra> {
   const lineas = items.map((p, i) => {
-    const monto =
+    const orig =
       typeof p.monto === "number"
         ? `${p.moneda || ""} ${p.monto.toLocaleString("es-AR")}`.trim()
         : "sin monto";
+    const ars = montoEnPesos(p);
+    const pesos =
+      ars != null
+        ? `$${ars.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`
+        : "no comparable (falta tipo de cambio)";
     return [
       `Cotización ${i + 1}:`,
       `  Proveedor: ${p.proveedor || "(sin nombre)"}`,
       `  Producto/detalle: ${p.detalle || "-"}`,
-      `  Monto: ${monto}`,
+      `  Monto original: ${orig}`,
+      `  Monto EN PESOS: ${pesos}`,
       `  Entrega: ${p.plazoEntrega || "-"}`,
       `  Pago: ${p.plazoPago || "-"}`,
-      `  Validez: ${p.validez || "-"}`,
     ].join("\n");
   });
 
-  const prompt = `Solicitud ${nroSolicitud}. Cotizaciones recibidas:\n\n${lineas.join(
+  const hoy = new Date().toLocaleDateString("es-AR");
+  const prompt = `Fecha de referencia (hoy): ${hoy}.
+Solicitud ${nroSolicitud}. Cotizaciones recibidas:\n\n${lineas.join(
     "\n\n"
-  )}\n\nEvaluá y recomendá la más conveniente.`;
+  )}\n\nEvaluá y recomendá la más conveniente (criterio principal: menor monto en pesos).`;
 
   const texto = await llamarGemini(SISTEMA_ANALISIS, [{ text: prompt }], 0.2);
   const match = texto.match(/\{[\s\S]*\}/);
