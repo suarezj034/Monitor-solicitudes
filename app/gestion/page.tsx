@@ -5,6 +5,14 @@ import type { DatosExtraidos, Presupuesto } from "@/lib/types";
 
 const MONEDAS = ["ARS", "USD", "EUR"];
 
+type Grupo = {
+  nro: string;
+  items: Presupuesto[];
+  barato: number | null;
+  caro: number | null;
+  ahorro: number | null;
+};
+
 const vacio = (nro = ""): Partial<Presupuesto> => ({
   id: "",
   nroSolicitud: nro,
@@ -46,6 +54,8 @@ export default function GestionPage() {
   const [avisoIA, setAvisoIA] = useState<string | null>(null);
   const [okMsg, setOkMsg] = useState<string | null>(null);
   const [verSolicitud, setVerSolicitud] = useState("");
+  const [evaluando, setEvaluando] = useState<string | null>(null);
+  const [evalError, setEvalError] = useState<string | null>(null);
 
   const authHeaders = { "x-admin-password": pass };
 
@@ -161,6 +171,140 @@ export default function GestionPage() {
   function verArchivo(key: string) {
     const url = `/api/gestion/archivo?key=${encodeURIComponent(key)}&password=${encodeURIComponent(pass)}`;
     window.open(url, "_blank", "noopener");
+  }
+
+  /** Pide la evaluación IA de una solicitud y descarga el PDF comparativo. */
+  async function generarEvaluacion(g: Grupo) {
+    setEvaluando(g.nro);
+    setEvalError(null);
+    try {
+      const res = await fetch("/api/gestion/evaluar", {
+        method: "POST",
+        headers: { ...authHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify({ nroSolicitud: g.nro }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setEvalError(json.error ?? "No se pudo generar la evaluación.");
+        return;
+      }
+      await descargarPDF(g, json.recomendado ?? "", json.analisis ?? "");
+    } catch {
+      setEvalError("No se pudo generar la evaluación.");
+    } finally {
+      setEvaluando(null);
+    }
+  }
+
+  /** Construye y descarga el PDF de comparación + análisis. */
+  async function descargarPDF(g: Grupo, recomendado: string, analisis: string) {
+    const { jsPDF } = await import("jspdf");
+    const autoTable = (await import("jspdf-autotable")).default;
+
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+    const W = doc.internal.pageSize.getWidth();
+    const H = doc.internal.pageSize.getHeight();
+    const BR: [number, number, number] = [21, 122, 82];
+
+    // Banda superior
+    doc.setFillColor(BR[0], BR[1], BR[2]);
+    doc.rect(0, 0, W, 20, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(15);
+    doc.text("DROMEX SRL", 14, 9);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.text("Gestión de compras", 14, 15);
+    doc.text(new Date().toLocaleDateString("es-AR"), W - 14, 12, { align: "right" });
+
+    // Título
+    doc.setTextColor(16, 32, 26);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text(`Evaluación de compra — Solicitud ${g.nro}`, 14, 30);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139);
+    doc.text(
+      `${g.items.length} cotización${g.items.length === 1 ? "" : "es"} comparada${
+        g.items.length === 1 ? "" : "s"
+      }`,
+      14,
+      36
+    );
+
+    const idxBarato = g.items.findIndex((p) => p.monto != null && p.monto === g.barato);
+
+    autoTable(doc, {
+      startY: 42,
+      head: [["Proveedor", "Producto / Detalle", "Monto", "Entrega", "Pago", "Validez"]],
+      body: g.items.map((p) => [
+        p.proveedor || "—",
+        p.detalle || "—",
+        fmtMonto(p.monto, p.moneda),
+        p.plazoEntrega || "—",
+        p.plazoPago || "—",
+        p.validez || "—",
+      ]),
+      styles: { fontSize: 8, cellPadding: 2, overflow: "linebreak" },
+      headStyles: { fillColor: BR, textColor: 255, fontStyle: "bold" },
+      columnStyles: { 1: { cellWidth: 45 }, 2: { halign: "right" } },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      didParseCell: (data: any) => {
+        if (data.section === "body" && data.row.index === idxBarato) {
+          data.cell.styles.fillColor = [227, 241, 233];
+          data.cell.styles.fontStyle = "bold";
+        }
+      },
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let y = ((doc as any).lastAutoTable?.finalY ?? 60) + 9;
+
+    if (g.ahorro != null && g.ahorro > 0) {
+      const moneda = g.items.find((i) => i.monto === g.barato)?.moneda ?? "ARS";
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(12, 75, 54);
+      doc.text(`Ahorro potencial: ${fmtMonto(g.ahorro, moneda)}`, 14, y);
+      y += 8;
+    }
+
+    if (recomendado) {
+      doc.setTextColor(16, 32, 26);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.text("Proveedor recomendado: ", 14, y);
+      const w = doc.getTextWidth("Proveedor recomendado: ");
+      doc.setFont("helvetica", "normal");
+      doc.text(recomendado, 14 + w, y);
+      y += 9;
+    }
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(16, 32, 26);
+    doc.text("Análisis (evaluación IA):", 14, y);
+    y += 6;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9.5);
+    doc.setTextColor(52, 101, 92);
+    const lineas = doc.splitTextToSize(analisis, W - 28);
+    doc.text(lineas, 14, y);
+
+    doc.setDrawColor(206, 221, 212);
+    doc.line(14, H - 12, W - 14, H - 12);
+    doc.setFontSize(7.5);
+    doc.setTextColor(124, 143, 134);
+    doc.text(
+      "DROMEX SRL · Sector Compras · Documento generado automáticamente",
+      14,
+      H - 8
+    );
+
+    const nombre = `Evaluacion-Solicitud-${g.nro.replace(/[^\w.-]+/g, "_")}.pdf`;
+    doc.save(nombre);
   }
 
   // Agrupar por Nº de solicitud.
@@ -448,6 +592,12 @@ export default function GestionPage() {
             />
           </div>
 
+          {evalError && (
+            <div className="mb-3 rounded-lg bg-rose-50 p-3 text-sm text-rose-700 ring-1 ring-rose-200">
+              ⚠️ {evalError}
+            </div>
+          )}
+
           {gruposVisibles.length === 0 ? (
             <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-400 shadow-sm">
               No hay presupuestos cargados todavía.
@@ -468,11 +618,25 @@ export default function GestionPage() {
                         {g.items.length} {g.items.length === 1 ? "cotización" : "cotizaciones"}
                       </span>
                     </div>
-                    {g.ahorro != null && g.ahorro > 0 && (
-                      <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200">
-                        Ahorro potencial {fmtMonto(g.ahorro, g.items.find((i) => i.monto === g.barato)?.moneda ?? "ARS")}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {g.ahorro != null && g.ahorro > 0 && (
+                        <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200">
+                          Ahorro potencial {fmtMonto(g.ahorro, g.items.find((i) => i.monto === g.barato)?.moneda ?? "ARS")}
+                        </span>
+                      )}
+                      <button
+                        onClick={() => generarEvaluacion(g)}
+                        disabled={!iaHabilitada || evaluando === g.nro}
+                        title={
+                          iaHabilitada
+                            ? "Genera un PDF comparativo con evaluación de IA"
+                            : "Requiere GEMINI_API_KEY para la evaluación"
+                        }
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {evaluando === g.nro ? "Generando…" : "📄 Generar evaluación"}
+                      </button>
+                    </div>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="min-w-full text-sm">
