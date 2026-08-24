@@ -17,6 +17,20 @@ export interface DataPayload {
   sectorActivo?: string;
 }
 
+/** Un pedido de la planilla de logística/transporte. */
+export interface Pedido {
+  id: string;
+  nombre: string;
+  detalle: string;
+  estado: string;
+}
+
+export interface LogisticaPayload {
+  actualizado: string | null;
+  total: number;
+  filas: Pedido[];
+}
+
 /**
  * Un presupuesto/cotización cargado en el área de gestión (compras).
  * Vive en un almacén aparte que sobrevive a cada subida del Excel.

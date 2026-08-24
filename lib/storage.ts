@@ -1,6 +1,7 @@
-import type { DataPayload } from "./types";
+import type { DataPayload, LogisticaPayload } from "./types";
 
 const BLOB_KEY = "solicitudes.json";
+const LOGISTICA_BLOB_KEY = "logistica.json";
 
 const hasBlob = () => !!process.env.BLOB_READ_WRITE_TOKEN;
 
@@ -112,4 +113,13 @@ export async function saveData(data: DataPayload): Promise<void> {
 
 export async function loadData(): Promise<DataPayload | null> {
   return loadJson<DataPayload>(BLOB_KEY);
+}
+
+/** Datos de la planilla de logística/transporte (fuente: Excel subido por el admin). */
+export async function saveLogistica(data: LogisticaPayload): Promise<void> {
+  await saveJson(LOGISTICA_BLOB_KEY, data);
+}
+
+export async function loadLogistica(): Promise<LogisticaPayload | null> {
+  return loadJson<LogisticaPayload>(LOGISTICA_BLOB_KEY);
 }

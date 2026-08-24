@@ -11,10 +11,13 @@ const SIN_SECTOR = [
   "/sector",
   "/admin",
   "/gestion",
+  "/transporte",
   "/api/sector",
   "/api/upload",
+  "/api/upload-logistica",
   "/api/logout",
   "/api/gestion",
+  "/api/logistica",
 ];
 
 export async function middleware(req: NextRequest) {

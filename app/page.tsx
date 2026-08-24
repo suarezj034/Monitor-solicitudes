@@ -164,6 +164,13 @@ export default function Home() {
             >
               Cambiar sector
             </button>
+            <a
+              href="/transporte"
+              className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800 shadow-sm transition hover:bg-amber-100"
+              title="Ver pedidos de transporte"
+            >
+              🚚 Transporte
+            </a>
             <button
               onClick={logout}
               className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50"

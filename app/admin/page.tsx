@@ -12,6 +12,10 @@ export default function AdminPage() {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
 
+  const [fileLog, setFileLog] = useState<File | null>(null);
+  const [busyLog, setBusyLog] = useState(false);
+  const [resultLog, setResultLog] = useState<Result | null>(null);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!file) {
@@ -35,6 +39,32 @@ export default function AdminPage() {
       setResult({ ok: false, error: "No se pudo conectar con el servidor." });
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function handleSubmitLog(e: React.FormEvent) {
+    e.preventDefault();
+    if (!fileLog) {
+      setResultLog({ ok: false, error: "Seleccioná un archivo .xlsx." });
+      return;
+    }
+    setBusyLog(true);
+    setResultLog(null);
+    try {
+      const form = new FormData();
+      form.append("password", password);
+      form.append("file", fileLog);
+      const res = await fetch("/api/upload-logistica", { method: "POST", body: form });
+      const json = await res.json();
+      if (res.ok && json.ok) {
+        setResultLog({ ok: true, total: json.total, actualizado: json.actualizado });
+      } else {
+        setResultLog({ ok: false, error: json.error ?? "Error desconocido." });
+      }
+    } catch {
+      setResultLog({ ok: false, error: "No se pudo conectar con el servidor." });
+    } finally {
+      setBusyLog(false);
     }
   }
 
@@ -107,9 +137,66 @@ export default function AdminPage() {
         )}
       </form>
 
+      <header className="mb-6 mt-10">
+        <h2 className="text-xl font-bold tracking-tight text-slate-900">
+          Ingesta de logística / transporte
+        </h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Subí la planilla de pedidos de transporte (hoja con columnas{" "}
+          <strong>Nombre</strong>, <strong>Detalle</strong> y <strong>Estado</strong>). Usa la
+          misma contraseña de arriba.
+        </p>
+      </header>
+
+      <form
+        onSubmit={handleSubmitLog}
+        className="space-y-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
+      >
+        <div>
+          <label className="mb-1 block text-sm font-medium text-slate-700">
+            Archivo Excel (.xlsx)
+          </label>
+          <input
+            type="file"
+            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            onChange={(e) => setFileLog(e.target.files?.[0] ?? null)}
+            className="block w-full text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-amber-600 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-amber-700"
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={busyLog}
+          className="w-full rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {busyLog ? "Procesando…" : "Subir y actualizar transporte"}
+        </button>
+
+        {resultLog && (
+          <div
+            className={`rounded-lg p-3 text-sm ${
+              resultLog.ok
+                ? "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200"
+                : "bg-rose-50 text-rose-700 ring-1 ring-rose-200"
+            }`}
+          >
+            {resultLog.ok ? (
+              <>
+                ✅ Datos actualizados: <strong>{resultLog.total}</strong> pedidos cargados.
+              </>
+            ) : (
+              <>⚠️ {resultLog.error}</>
+            )}
+          </div>
+        )}
+      </form>
+
       <p className="mt-4 flex flex-wrap justify-center gap-x-6 gap-y-2 text-center text-sm">
         <a href="/gestion" className="font-medium text-brand-700 underline hover:text-brand-800">
           Gestión de compras (presupuestos) →
+        </a>
+        <a href="/transporte" className="font-medium text-brand-700 underline hover:text-brand-800">
+          Ver la vista de transporte →
         </a>
         <a href="/" className="font-medium text-brand-700 underline hover:text-brand-800">
           Ver la vista de solicitudes →
