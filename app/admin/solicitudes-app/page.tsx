@@ -8,8 +8,22 @@ const ESTADOS_TRANSPORTE = ["PENDIENTE", "CONFIRMADO", "CANCELADO"];
 const CELERIDAD_LABELS: Record<string, string> = {
   URGENTE: "Urgente",
   SEMANA: "Dentro de la semana",
-  NEGOCIAR: "Para negociar",
+  PLANIFICADA: "Planificada",
+  RECURRENTE: "Recurrente",
 };
+const CELERIDAD_DETALLE_LABELS: Record<string, string> = {
+  MENSUAL: "Mensual",
+  SEMESTRAL: "Semestral",
+};
+
+function textoCeleridad(celeridad?: string, detalle?: string): string {
+  if (!celeridad) return "—";
+  const base = CELERIDAD_LABELS[celeridad] ?? celeridad;
+  if (!detalle) return base;
+  if (celeridad === "PLANIFICADA") return `${base} (${detalle}d)`;
+  if (celeridad === "RECURRENTE") return `${base} (${CELERIDAD_DETALLE_LABELS[detalle] ?? detalle})`;
+  return base;
+}
 
 function Stat({ label, value }: { label: string; value: number | string }) {
   return (
@@ -236,20 +250,25 @@ export default function AdminSolicitudesAppPage() {
                         {s.detalle}
                       </td>
                       <td className="whitespace-nowrap border-b border-slate-100 px-3 py-2 text-xs">
-                        {CELERIDAD_LABELS[s.celeridad ?? ""] ?? "—"}
+                        {textoCeleridad(s.celeridad, s.celeridadDetalle)}
                       </td>
-                      <td className="whitespace-nowrap border-b border-slate-100 px-3 py-2">
+                      <td className="whitespace-nowrap border-b border-slate-100 px-3 py-2 text-xs">
                         {(s.adjuntos ?? []).length === 0 ? (
                           "—"
                         ) : (
-                          <a
-                            href={s.adjuntos[0]}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs font-medium text-brand-700 underline hover:text-brand-800"
-                          >
-                            Ver
-                          </a>
+                          <div className="flex gap-1">
+                            {(s.adjuntos ?? []).map((url, k) => (
+                              <a
+                                key={k}
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="font-medium text-brand-700 underline hover:text-brand-800"
+                              >
+                                Ver {k + 1}
+                              </a>
+                            ))}
+                          </div>
                         )}
                       </td>
                       <td className="border-b border-slate-100 px-3 py-2">
@@ -333,20 +352,25 @@ export default function AdminSolicitudesAppPage() {
                         {p.detalle}
                       </td>
                       <td className="whitespace-nowrap border-b border-slate-100 px-3 py-2 text-xs">
-                        {CELERIDAD_LABELS[p.celeridad ?? ""] ?? "—"}
+                        {textoCeleridad(p.celeridad, p.celeridadDetalle)}
                       </td>
-                      <td className="whitespace-nowrap border-b border-slate-100 px-3 py-2">
+                      <td className="whitespace-nowrap border-b border-slate-100 px-3 py-2 text-xs">
                         {(p.adjuntos ?? []).length === 0 ? (
                           "—"
                         ) : (
-                          <a
-                            href={(p.adjuntos ?? [])[0]}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs font-medium text-brand-700 underline hover:text-brand-800"
-                          >
-                            Ver
-                          </a>
+                          <div className="flex gap-1">
+                            {(p.adjuntos ?? []).map((url, k) => (
+                              <a
+                                key={k}
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="font-medium text-brand-700 underline hover:text-brand-800"
+                              >
+                                Ver {k + 1}
+                              </a>
+                            ))}
+                          </div>
                         )}
                       </td>
                       <td className="border-b border-slate-100 px-3 py-2">

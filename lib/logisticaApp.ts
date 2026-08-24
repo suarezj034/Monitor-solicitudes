@@ -13,6 +13,7 @@ export async function crearPedidoApp(input: {
   nombre: string;
   detalle: string;
   celeridad?: Celeridad;
+  celeridadDetalle?: string;
   adjuntos?: string[];
 }): Promise<Pedido> {
   const { siguienteId, filas } = await loadLogisticaApp();
@@ -23,6 +24,7 @@ export async function crearPedidoApp(input: {
     estado: "PENDIENTE",
     origen: "app",
     celeridad: input.celeridad,
+    celeridadDetalle: input.celeridadDetalle,
     adjuntos: input.adjuntos ?? [],
   };
   filas.push(nuevo);

@@ -1,5 +1,12 @@
-/** Qué tan urgente es: para decidir si negociar/buscar proveedor o resolver ya. */
-export type Celeridad = "URGENTE" | "SEMANA" | "NEGOCIAR";
+/**
+ * Qué tan urgente es y con qué previsión se puede planificar:
+ * - URGENTE: hay que resolverlo ya.
+ * - SEMANA: dentro de la semana (7 días hábiles).
+ * - PLANIFICADA: compra planificada a N días (ver celeridadDetalle: "15"|"30"|"45"|"60").
+ * - RECURRENTE: se repite en el tiempo (ver celeridadDetalle: "MENSUAL"|"SEMESTRAL"),
+ *   sirve para prever compras futuras.
+ */
+export type Celeridad = "URGENTE" | "SEMANA" | "PLANIFICADA" | "RECURRENTE";
 
 export interface Solicitud {
   nroSolicitud: string;
@@ -8,7 +15,7 @@ export interface Solicitud {
   estado: string;
   oc: string;
   fechaRecepcion: string;
-  /** URLs de archivos adjuntos (0, 1 o varias). */
+  /** URLs de archivos adjuntos (hasta 3). */
   adjuntos: string[];
   /** Quién la pidió. Vacío en cargas viejas del Excel que no lo traían. */
   solicitante: string;
@@ -16,6 +23,8 @@ export interface Solicitud {
   origen?: "app";
   /** Urgencia declarada al cargar (solo en las de la app). */
   celeridad?: Celeridad;
+  /** Detalle de la celeridad: días (PLANIFICADA) o periodicidad (RECURRENTE). */
+  celeridadDetalle?: string;
 }
 
 export interface DataPayload {
@@ -43,7 +52,9 @@ export interface Pedido {
   origen?: "app";
   /** Urgencia declarada al cargar (solo en los de la app). */
   celeridad?: Celeridad;
-  /** URLs de archivos adjuntos (solo en los de la app). */
+  /** Detalle de la celeridad: días (PLANIFICADA) o periodicidad (RECURRENTE). */
+  celeridadDetalle?: string;
+  /** URLs de archivos adjuntos (hasta 3, solo en los de la app). */
   adjuntos?: string[];
 }
 

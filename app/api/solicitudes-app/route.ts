@@ -7,8 +7,9 @@ import type { Celeridad } from "@/lib/types";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const CELERIDADES: Celeridad[] = ["URGENTE", "SEMANA", "NEGOCIAR"];
+const CELERIDADES: Celeridad[] = ["URGENTE", "SEMANA", "PLANIFICADA", "RECURRENTE"];
 const TIPOS_OK = new Set(["application/pdf", "image/png", "image/jpeg", "image/webp", "image/gif"]);
+const MAX_ARCHIVOS = 3;
 
 /** Crea una solicitud de compra desde el formulario propio (requiere sector habilitado). */
 export async function POST(req: NextRequest) {
@@ -31,6 +32,7 @@ export async function POST(req: NextRequest) {
   const celeridad = CELERIDADES.includes(celeridadRaw as Celeridad)
     ? (celeridadRaw as Celeridad)
     : undefined;
+  const celeridadDetalle = String(form.get("celeridadDetalle") ?? "").trim() || undefined;
 
   // Con el código maestro hay que elegir a qué sector corresponde la solicitud.
   const sector =
@@ -48,28 +50,40 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Falta el sector." }, { status: 400 });
   }
 
-  // Presupuesto adjunto (opcional).
-  let key = "";
-  const file = form.get("file");
-  if (file instanceof File && file.size > 0) {
+  // Presupuestos adjuntos (opcionales, hasta 3).
+  const archivos = form.getAll("file").filter((f): f is File => f instanceof File && f.size > 0);
+  if (archivos.length > MAX_ARCHIVOS) {
+    return NextResponse.json(
+      { error: `Se pueden adjuntar hasta ${MAX_ARCHIVOS} presupuestos.` },
+      { status: 400 }
+    );
+  }
+  const adjuntos: string[] = [];
+  for (const file of archivos) {
     if (!TIPOS_OK.has(file.type)) {
       return NextResponse.json(
-        { error: "El presupuesto debe ser PDF o imagen (PNG, JPG, WEBP, GIF)." },
+        { error: "Los presupuestos deben ser PDF o imagen (PNG, JPG, WEBP, GIF)." },
         { status: 400 }
       );
     }
     if (file.size > 15 * 1024 * 1024) {
-      return NextResponse.json({ error: "El archivo supera los 15 MB." }, { status: 400 });
+      return NextResponse.json({ error: "Cada archivo debe pesar hasta 15 MB." }, { status: 400 });
     }
     const nombreLimpio = file.name.replace(/[^\w.\-]+/g, "_").slice(-80);
-    key = `solicitudes-app/${crypto.randomUUID()}-${nombreLimpio}`;
+    const key = `solicitudes-app/${crypto.randomUUID()}-${nombreLimpio}`;
     await saveBinary(key, new Uint8Array(await file.arrayBuffer()), file.type);
+    adjuntos.push(`/api/solicitudes-app/archivo?key=${encodeURIComponent(key)}`);
   }
 
-  const nueva = await crearSolicitudApp({ solicitante, sector, detalle, celeridad });
-  if (key) {
-    const url = `/api/solicitudes-app/archivo?key=${encodeURIComponent(key)}`;
-    const actualizada = await actualizarSolicitudApp(nueva.nroSolicitud, { adjuntos: [url] });
+  const nueva = await crearSolicitudApp({
+    solicitante,
+    sector,
+    detalle,
+    celeridad,
+    celeridadDetalle,
+  });
+  if (adjuntos.length > 0) {
+    const actualizada = await actualizarSolicitudApp(nueva.nroSolicitud, { adjuntos });
     return NextResponse.json({ ok: true, solicitud: actualizada ?? nueva });
   }
   return NextResponse.json({ ok: true, solicitud: nueva });

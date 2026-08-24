@@ -5,9 +5,21 @@ import type { DataPayload } from "@/lib/types";
 
 const CELERIDADES = [
   { value: "URGENTE", label: "Urgente", hint: "Necesito resolverlo ya" },
-  { value: "SEMANA", label: "Dentro de la semana", hint: "Hay unos días de margen" },
-  { value: "NEGOCIAR", label: "Para negociar / buscar proveedores", hint: "Sin apuro, se puede cotizar bien" },
+  { value: "SEMANA", label: "Dentro de la semana", hint: "7 días hábiles" },
+  { value: "PLANIFICADA", label: "Compra planificada", hint: "Elegí a cuántos días" },
+  {
+    value: "RECURRENTE",
+    label: "Compra recurrente",
+    hint: "Se repite en el tiempo (para poder preverla)",
+  },
 ] as const;
+
+const DIAS_PLANIFICADA = ["15", "30", "45", "60"];
+const PERIODICIDAD_RECURRENTE = [
+  { value: "MENSUAL", label: "Mensual" },
+  { value: "SEMESTRAL", label: "Semestral" },
+];
+const MAX_ARCHIVOS = 3;
 
 export default function NuevaSolicitudPage() {
   const [sectorActivo, setSectorActivo] = useState<string | null>(null);
@@ -16,8 +28,9 @@ export default function NuevaSolicitudPage() {
   const [solicitante, setSolicitante] = useState("");
   const [detalle, setDetalle] = useState("");
   const [celeridad, setCeleridad] = useState<string>("SEMANA");
+  const [celeridadDetalle, setCeleridadDetalle] = useState<string>("");
   const [tienePresupuesto, setTienePresupuesto] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
@@ -51,15 +64,16 @@ export default function NuevaSolicitudPage() {
       form.append("solicitante", solicitante);
       form.append("detalle", detalle);
       form.append("celeridad", celeridad);
+      if (celeridadDetalle) form.append("celeridadDetalle", celeridadDetalle);
       if (esMaestro) form.append("sector", sector);
-      if (tienePresupuesto && file) form.append("file", file);
+      if (tienePresupuesto) files.forEach((f) => form.append("file", f));
       const res = await fetch("/api/solicitudes-app", { method: "POST", body: form });
       const json = await res.json();
       if (res.ok && json.ok) {
         setOk(`Solicitud cargada: Nº ${json.solicitud.nroSolicitud}.`);
         setDetalle("");
         setTienePresupuesto(false);
-        setFile(null);
+        setFiles([]);
       } else {
         setError(json.error ?? "No se pudo cargar la solicitud.");
       }
@@ -159,7 +173,10 @@ export default function NuevaSolicitudPage() {
                     name="celeridad"
                     value={c.value}
                     checked={celeridad === c.value}
-                    onChange={(e) => setCeleridad(e.target.value)}
+                    onChange={(e) => {
+                      setCeleridad(e.target.value);
+                      setCeleridadDetalle("");
+                    }}
                     className="mt-0.5"
                   />
                   <span>
@@ -169,6 +186,44 @@ export default function NuevaSolicitudPage() {
                 </label>
               ))}
             </div>
+
+            {celeridad === "PLANIFICADA" && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {DIAS_PLANIFICADA.map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setCeleridadDetalle(d)}
+                    className={`rounded-lg border px-3 py-1.5 text-sm transition ${
+                      celeridadDetalle === d
+                        ? "border-brand-400 bg-brand-50 font-semibold text-brand-800"
+                        : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    {d} días
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {celeridad === "RECURRENTE" && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {PERIODICIDAD_RECURRENTE.map((p) => (
+                  <button
+                    key={p.value}
+                    type="button"
+                    onClick={() => setCeleridadDetalle(p.value)}
+                    className={`rounded-lg border px-3 py-1.5 text-sm transition ${
+                      celeridadDetalle === p.value
+                        ? "border-brand-400 bg-brand-50 font-semibold text-brand-800"
+                        : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="rounded-lg bg-slate-50 p-3 ring-1 ring-slate-200">
@@ -178,19 +233,38 @@ export default function NuevaSolicitudPage() {
                 checked={tienePresupuesto}
                 onChange={(e) => {
                   setTienePresupuesto(e.target.checked);
-                  if (!e.target.checked) setFile(null);
+                  if (!e.target.checked) setFiles([]);
                 }}
                 className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
               />
-              Ya tengo un presupuesto para adjuntar
+              Ya tengo presupuesto(s) para adjuntar (hasta {MAX_ARCHIVOS})
             </label>
             {tienePresupuesto && (
-              <input
-                type="file"
-                accept=".pdf,image/png,image/jpeg,image/webp,image/gif"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                className="mt-2 block w-full text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-brand-600 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-brand-700"
-              />
+              <>
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,image/png,image/jpeg,image/webp,image/gif"
+                  onChange={(e) => {
+                    const elegidos = Array.from(e.target.files ?? []);
+                    if (elegidos.length > MAX_ARCHIVOS) {
+                      setError(`Se pueden adjuntar hasta ${MAX_ARCHIVOS} presupuestos.`);
+                      setFiles(elegidos.slice(0, MAX_ARCHIVOS));
+                    } else {
+                      setError(null);
+                      setFiles(elegidos);
+                    }
+                  }}
+                  className="mt-2 block w-full text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-brand-600 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-brand-700"
+                />
+                {files.length > 0 && (
+                  <ul className="mt-2 space-y-0.5 text-xs text-slate-500">
+                    {files.map((f, i) => (
+                      <li key={i}>📎 {f.name}</li>
+                    ))}
+                  </ul>
+                )}
+              </>
             )}
           </div>
 

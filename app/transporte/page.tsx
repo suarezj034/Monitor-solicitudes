@@ -24,22 +24,37 @@ function EstadoBadge({ estado }: { estado: string }) {
 const CELERIDAD_STYLES: Record<string, string> = {
   URGENTE: "bg-rose-100 text-rose-700 ring-rose-200",
   SEMANA: "bg-amber-100 text-amber-800 ring-amber-200",
-  NEGOCIAR: "bg-slate-100 text-slate-600 ring-slate-200",
+  PLANIFICADA: "bg-blue-100 text-blue-800 ring-blue-200",
+  RECURRENTE: "bg-indigo-100 text-indigo-800 ring-indigo-200",
 };
 const CELERIDAD_LABELS: Record<string, string> = {
   URGENTE: "Urgente",
-  SEMANA: "Dentro de la semana",
-  NEGOCIAR: "Para negociar",
+  SEMANA: "Dentro de la semana (7 días hábiles)",
+  PLANIFICADA: "Planificada",
+  RECURRENTE: "Recurrente",
+};
+const CELERIDAD_DETALLE_LABELS: Record<string, string> = {
+  MENSUAL: "Mensual",
+  SEMESTRAL: "Semestral",
 };
 
-function CeleridadBadge({ celeridad }: { celeridad?: string }) {
+function textoCeleridad(celeridad?: string, detalle?: string): string {
+  if (!celeridad) return "";
+  const base = CELERIDAD_LABELS[celeridad] ?? celeridad;
+  if (!detalle) return base;
+  if (celeridad === "PLANIFICADA") return `${base} · ${detalle} días`;
+  if (celeridad === "RECURRENTE") return `${base} · ${CELERIDAD_DETALLE_LABELS[detalle] ?? detalle}`;
+  return base;
+}
+
+function CeleridadBadge({ celeridad, celeridadDetalle }: { celeridad?: string; celeridadDetalle?: string }) {
   if (!celeridad) return <span className="text-slate-300">—</span>;
   const style = CELERIDAD_STYLES[celeridad] ?? "bg-slate-100 text-slate-700 ring-slate-200";
   return (
     <span
       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset ${style}`}
     >
-      {CELERIDAD_LABELS[celeridad] ?? celeridad}
+      {textoCeleridad(celeridad, celeridadDetalle)}
     </span>
   );
 }
@@ -60,6 +75,7 @@ export default function TransportePage() {
         detalle: f.detalle ?? "",
         estado: f.estado ?? "",
         celeridad: f.celeridad,
+        celeridadDetalle: f.celeridadDetalle,
         adjuntos: Array.isArray(f.adjuntos) ? f.adjuntos : [],
       }));
       setData({ ...json, filas });
@@ -186,7 +202,7 @@ export default function TransportePage() {
                         <EstadoBadge estado={f.estado} />
                       </td>
                       <td className="whitespace-nowrap border-b border-slate-100 px-4 py-3">
-                        <CeleridadBadge celeridad={f.celeridad} />
+                        <CeleridadBadge celeridad={f.celeridad} celeridadDetalle={f.celeridadDetalle} />
                       </td>
                       <td className="whitespace-nowrap border-b border-slate-100 px-4 py-3">
                         {(f.adjuntos ?? []).length === 0 ? (

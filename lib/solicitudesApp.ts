@@ -14,6 +14,7 @@ export async function crearSolicitudApp(input: {
   sector: string;
   detalle: string;
   celeridad?: Celeridad;
+  celeridadDetalle?: string;
   adjuntos?: string[];
 }): Promise<Solicitud> {
   const { siguienteId, filas } = await loadSolicitudesApp();
@@ -28,6 +29,7 @@ export async function crearSolicitudApp(input: {
     solicitante: input.solicitante,
     origen: "app",
     celeridad: input.celeridad,
+    celeridadDetalle: input.celeridadDetalle,
   };
   filas.push(nueva);
   await saveJson(KEY, { siguienteId: siguienteId + 1, filas } satisfies SolicitudAppPayload);
