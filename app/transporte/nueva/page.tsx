@@ -3,8 +3,7 @@
 import { useState } from "react";
 
 const CELERIDADES = [
-  { value: "URGENTE", label: "Urgente", hint: "Necesito resolverlo ya" },
-  { value: "SEMANA", label: "Dentro de la semana", hint: "7 días hábiles" },
+  { value: "URGENTE", label: "Urgente", hint: "72 hs a 5-7 días hábiles" },
   { value: "PLANIFICADA", label: "Compra planificada", hint: "Elegí a cuántos días" },
   {
     value: "RECURRENTE",
@@ -23,7 +22,7 @@ const MAX_ARCHIVOS = 3;
 export default function NuevoPedidoTransportePage() {
   const [nombre, setNombre] = useState("");
   const [detalle, setDetalle] = useState("");
-  const [celeridad, setCeleridad] = useState<string>("SEMANA");
+  const [celeridad, setCeleridad] = useState<string>("URGENTE");
   const [celeridadDetalle, setCeleridadDetalle] = useState<string>("");
   const [tienePresupuesto, setTienePresupuesto] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
@@ -108,7 +107,7 @@ export default function NuevoPedidoTransportePage() {
 
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">
-              ¿Con qué celeridad se necesita?
+              ¿Con qué celeridad se necesita / se debe enviar la OC?
             </label>
             <div className="space-y-2">
               {CELERIDADES.map((c) => (
