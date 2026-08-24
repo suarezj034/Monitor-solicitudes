@@ -15,6 +15,10 @@ export async function crearPedidoApp(input: {
   celeridad?: Celeridad;
   celeridadDetalle?: string;
   adjuntos?: string[];
+  sector?: string;
+  fechaCoordinar?: string;
+  direccion?: string;
+  horarios?: string;
 }): Promise<Pedido> {
   const { siguienteId, filas } = await loadLogisticaApp();
   const nuevo: Pedido = {
@@ -26,6 +30,10 @@ export async function crearPedidoApp(input: {
     celeridad: input.celeridad,
     celeridadDetalle: input.celeridadDetalle,
     adjuntos: input.adjuntos ?? [],
+    sector: input.sector,
+    fechaCoordinar: input.fechaCoordinar,
+    direccion: input.direccion,
+    horarios: input.horarios,
   };
   filas.push(nuevo);
   await saveJson(KEY, { siguienteId: siguienteId + 1, filas } satisfies PedidoAppPayload);

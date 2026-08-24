@@ -328,6 +328,8 @@ export default function AdminSolicitudesAppPage() {
                 <tr className="bg-amber-700 text-white">
                   <th className="px-3 py-2 text-left font-semibold">ID</th>
                   <th className="px-3 py-2 text-left font-semibold">Nombre</th>
+                  <th className="px-3 py-2 text-left font-semibold">Sector</th>
+                  <th className="px-3 py-2 text-left font-semibold">A coordinar</th>
                   <th className="px-3 py-2 text-left font-semibold">Detalle</th>
                   <th className="px-3 py-2 text-left font-semibold">Celeridad</th>
                   <th className="px-3 py-2 text-left font-semibold">Presup.</th>
@@ -337,7 +339,7 @@ export default function AdminSolicitudesAppPage() {
               <tbody>
                 {pedidosApp.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-3 py-8 text-center text-slate-400">
+                    <td colSpan={8} className="px-3 py-8 text-center text-slate-400">
                       No hay pedidos cargados por la app todavía.
                     </td>
                   </tr>
@@ -348,6 +350,16 @@ export default function AdminSolicitudesAppPage() {
                         {p.id}
                       </td>
                       <td className="whitespace-nowrap border-b border-slate-100 px-3 py-2">{p.nombre}</td>
+                      <td className="whitespace-nowrap border-b border-slate-100 px-3 py-2 text-xs">
+                        {p.sector || "—"}
+                      </td>
+                      <td
+                        className="whitespace-nowrap border-b border-slate-100 px-3 py-2 text-xs"
+                        title={p.direccion || ""}
+                      >
+                        {p.fechaCoordinar || "—"}
+                        {p.horarios ? ` · ${p.horarios}` : ""}
+                      </td>
                       <td className="max-w-md border-b border-slate-100 px-3 py-2" title={p.detalle}>
                         {p.detalle}
                       </td>

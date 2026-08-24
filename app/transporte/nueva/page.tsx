@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const CELERIDADES = [
   { value: "URGENTE", label: "Urgente", hint: "72 hs a 5-7 días hábiles" },
@@ -21,6 +21,11 @@ const MAX_ARCHIVOS = 3;
 
 export default function NuevoPedidoTransportePage() {
   const [nombre, setNombre] = useState("");
+  const [sectores, setSectores] = useState<string[]>([]);
+  const [sector, setSector] = useState("");
+  const [fechaCoordinar, setFechaCoordinar] = useState("");
+  const [direccion, setDireccion] = useState("");
+  const [horarios, setHorarios] = useState("");
   const [detalle, setDetalle] = useState("");
   const [celeridad, setCeleridad] = useState<string>("URGENTE");
   const [celeridadDetalle, setCeleridadDetalle] = useState<string>("");
@@ -30,6 +35,13 @@ export default function NuevoPedidoTransportePage() {
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
 
+  useEffect(() => {
+    fetch("/api/sector", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((j) => setSectores(j.sectores ?? []))
+      .catch(() => setSectores([]));
+  }, []);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -38,6 +50,10 @@ export default function NuevoPedidoTransportePage() {
     try {
       const form = new FormData();
       form.append("nombre", nombre);
+      if (sector) form.append("sector", sector);
+      if (fechaCoordinar) form.append("fechaCoordinar", fechaCoordinar);
+      if (direccion) form.append("direccion", direccion);
+      if (horarios) form.append("horarios", horarios);
       form.append("detalle", detalle);
       form.append("celeridad", celeridad);
       if (celeridadDetalle) form.append("celeridadDetalle", celeridadDetalle);
@@ -47,6 +63,9 @@ export default function NuevoPedidoTransportePage() {
       if (res.ok && json.ok) {
         setOk(`Pedido cargado: ${json.pedido.id}.`);
         setDetalle("");
+        setDireccion("");
+        setHorarios("");
+        setFechaCoordinar("");
         setTienePresupuesto(false);
         setFiles([]);
       } else {
@@ -95,12 +114,65 @@ export default function NuevoPedidoTransportePage() {
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Detalle</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Sector</label>
+            <select
+              value={sector}
+              onChange={(e) => setSector(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"
+            >
+              <option value="">— Elegí un sector —</option>
+              {sectores.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">
+                Fecha a coordinar
+              </label>
+              <input
+                type="date"
+                value={fechaCoordinar}
+                onChange={(e) => setFechaCoordinar(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Horarios</label>
+              <input
+                type="text"
+                value={horarios}
+                onChange={(e) => setHorarios(e.target.value)}
+                placeholder="Ej: de 9 a 17 hs"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Dirección</label>
+            <input
+              type="text"
+              value={direccion}
+              onChange={(e) => setDireccion(e.target.value)}
+              placeholder="Calle, número, localidad…"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Detalle de lo que se envía o retira
+            </label>
             <textarea
               value={detalle}
               onChange={(e) => setDetalle(e.target.value)}
               rows={4}
-              placeholder="Qué hay que retirar/entregar, dirección, referencias del transporte…"
+              placeholder="Medidas, cantidad, indicaciones, referencias del transporte…"
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"
             />
           </div>

@@ -56,6 +56,14 @@ export interface Pedido {
   celeridadDetalle?: string;
   /** URLs de archivos adjuntos (hasta 3, solo en los de la app). */
   adjuntos?: string[];
+  /** Sector que pide el transporte (solo en los de la app). */
+  sector?: string;
+  /** Fecha en la que hay que coordinar el retiro/entrega (dd/mm/aaaa). */
+  fechaCoordinar?: string;
+  /** Dirección del retiro/entrega. */
+  direccion?: string;
+  /** Horarios en los que se puede retirar/entregar. */
+  horarios?: string;
 }
 
 export interface LogisticaPayload {
