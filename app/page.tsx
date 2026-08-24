@@ -70,6 +70,8 @@ export default function Home() {
         oc: f.oc ?? "",
         fechaRecepcion: f.fechaRecepcion ?? "",
         adjuntos: Array.isArray(f.adjuntos) ? f.adjuntos : [],
+        solicitante: f.solicitante ?? "",
+        origen: f.origen,
       }));
       setData({ ...json, filas });
     } finally {
@@ -108,7 +110,8 @@ export default function Home() {
           f.oc.toLowerCase().includes(q) ||
           f.estado.toLowerCase().includes(q) ||
           f.nroSolicitud.toLowerCase().includes(q) ||
-          f.fechaRecepcion.toLowerCase().includes(q)
+          f.fechaRecepcion.toLowerCase().includes(q) ||
+          f.solicitante.toLowerCase().includes(q)
       );
     }
     return rows;
@@ -170,6 +173,13 @@ export default function Home() {
               title="Ver pedidos de transporte"
             >
               🚚 Transporte
+            </a>
+            <a
+              href="/solicitud/nueva"
+              className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+              title="Cargar una nueva solicitud de compra"
+            >
+              + Nueva solicitud
             </a>
             <button
               onClick={logout}
@@ -313,6 +323,7 @@ export default function Home() {
                 <tr className="bg-brand-700 text-white">
                   <th className="px-4 py-3 text-left font-semibold">Nº (sector)</th>
                   <th className="px-4 py-3 text-left font-semibold">Sector</th>
+                  <th className="px-4 py-3 text-left font-semibold">Solicitante</th>
                   <th className="px-4 py-3 text-left font-semibold">Detalle</th>
                   <th className="px-4 py-3 text-left font-semibold">Estado</th>
                   <th className="px-4 py-3 text-left font-semibold">OC</th>
@@ -323,13 +334,13 @@ export default function Home() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center text-slate-400">
+                    <td colSpan={8} className="px-4 py-12 text-center text-slate-400">
                       Cargando…
                     </td>
                   </tr>
                 ) : filas.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center text-slate-400">
+                    <td colSpan={8} className="px-4 py-12 text-center text-slate-400">
                       No hay solicitudes para mostrar.
                     </td>
                   </tr>
@@ -341,6 +352,9 @@ export default function Home() {
                       </td>
                       <td className="whitespace-nowrap border-b border-slate-100 px-4 py-3 font-medium text-slate-700">
                         {f.sector || "—"}
+                      </td>
+                      <td className="whitespace-nowrap border-b border-slate-100 px-4 py-3 text-slate-600">
+                        {f.solicitante || "—"}
                       </td>
                       <td
                         className="max-w-md border-b border-slate-100 px-4 py-3 text-slate-700"

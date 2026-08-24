@@ -192,6 +192,12 @@ export default function AdminPage() {
       </form>
 
       <p className="mt-4 flex flex-wrap justify-center gap-x-6 gap-y-2 text-center text-sm">
+        <a
+          href="/admin/solicitudes-app"
+          className="font-medium text-brand-700 underline hover:text-brand-800"
+        >
+          Panel de gestión y reportes →
+        </a>
         <a href="/gestion" className="font-medium text-brand-700 underline hover:text-brand-800">
           Gestión de compras (presupuestos) →
         </a>

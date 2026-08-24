@@ -7,6 +7,10 @@ export interface Solicitud {
   fechaRecepcion: string;
   /** URLs de archivos adjuntos (0, 1 o varias). */
   adjuntos: string[];
+  /** Quién la pidió. Vacío en cargas viejas del Excel que no lo traían. */
+  solicitante: string;
+  /** "app" si se cargó con el formulario propio; ausente = viene del Excel. */
+  origen?: "app";
 }
 
 export interface DataPayload {
@@ -17,17 +21,33 @@ export interface DataPayload {
   sectorActivo?: string;
 }
 
+/** Solicitudes cargadas con el formulario propio (no vienen del Excel). */
+export interface SolicitudAppPayload {
+  /** Próximo correlativo a usar (nroSolicitud = "S-<siguienteId>"). */
+  siguienteId: number;
+  filas: Solicitud[];
+}
+
 /** Un pedido de la planilla de logística/transporte. */
 export interface Pedido {
   id: string;
   nombre: string;
   detalle: string;
   estado: string;
+  /** "app" si se cargó con el formulario propio; ausente = viene del Excel. */
+  origen?: "app";
 }
 
 export interface LogisticaPayload {
   actualizado: string | null;
   total: number;
+  filas: Pedido[];
+}
+
+/** Pedidos de transporte cargados con el formulario propio. */
+export interface PedidoAppPayload {
+  /** Próximo correlativo a usar (id = "T-<siguienteId>"). */
+  siguienteId: number;
   filas: Pedido[];
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import type { DatosExtraidos, Presupuesto } from "@/lib/types";
 import { montoComparable } from "@/lib/moneda";
 
@@ -59,7 +60,8 @@ function fmtMonto(monto: number | null, moneda: string): string {
   }
 }
 
-export default function GestionPage() {
+function GestionPageInner() {
+  const searchParams = useSearchParams();
   const [pass, setPass] = useState("");
   const [authed, setAuthed] = useState(false);
   const [iaHabilitada, setIaHabilitada] = useState(false);
@@ -77,6 +79,14 @@ export default function GestionPage() {
   const [verificando, setVerificando] = useState(true);
 
   const authHeaders = { "x-admin-password": pass };
+
+  // Link "Cargar cotización" desde el panel de gestión: /gestion?nro=S-42
+  useEffect(() => {
+    if (!authed) return;
+    const nro = searchParams.get("nro");
+    if (nro) setForm(vacio(nro, "nro"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authed, searchParams]);
 
   // Al montar: si ya hay cookie de sesión de admin válida, entra directo.
   useEffect(() => {
@@ -954,6 +964,14 @@ export default function GestionPage() {
         </section>
       </main>
     </div>
+  );
+}
+
+export default function GestionPage() {
+  return (
+    <Suspense fallback={null}>
+      <GestionPageInner />
+    </Suspense>
   );
 }
 

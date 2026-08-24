@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { loadLogistica } from "@/lib/storage";
+import { loadLogisticaApp } from "@/lib/logisticaApp";
 import { verifySession, SESSION_COOKIE } from "@/lib/auth";
 import type { LogisticaPayload } from "@/lib/types";
 
@@ -22,8 +23,11 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const data = await loadLogistica();
-  const payload: LogisticaPayload = data ?? { actualizado: null, total: 0, filas: [] };
+  const [data, appData] = await Promise.all([loadLogistica(), loadLogisticaApp()]);
+  const base: LogisticaPayload = data ?? { actualizado: null, total: 0, filas: [] };
+  // Se combinan los del Excel con los cargados por el formulario propio.
+  const filas = [...base.filas, ...appData.filas];
+  const payload: LogisticaPayload = { actualizado: base.actualizado, total: filas.length, filas };
 
   return NextResponse.json(payload, {
     headers: { "Cache-Control": "no-store" },

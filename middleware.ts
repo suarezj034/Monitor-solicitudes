@@ -18,6 +18,8 @@ const SIN_SECTOR = [
   "/api/logout",
   "/api/gestion",
   "/api/logistica",
+  "/api/logistica-app",
+  "/api/admin",
 ];
 
 export async function middleware(req: NextRequest) {

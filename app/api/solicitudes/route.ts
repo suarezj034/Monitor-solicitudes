@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { loadData } from "@/lib/storage";
+import { loadSolicitudesApp } from "@/lib/solicitudesApp";
 import { readSectorToken, SECTOR_COOKIE, TODOS_LOS_SECTORES } from "@/lib/auth";
 import { claveSector } from "@/lib/normalize";
 import type { DataPayload } from "@/lib/types";
@@ -22,16 +23,18 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const data = await loadData();
+  const [data, appData] = await Promise.all([loadData(), loadSolicitudesApp()]);
   const base: DataPayload = data ?? { actualizado: null, total: 0, filas: [] };
+  // Se combinan las del Excel con las cargadas por el formulario propio.
+  const todasLasFilas = [...base.filas, ...appData.filas];
 
   // IMPORTANTE: el filtrado se hace acá, en el servidor. Al navegador solo
   // viajan las filas del sector habilitado.
   const objetivo = claveSector(sectorHabilitado);
   const filas =
     sectorHabilitado === TODOS_LOS_SECTORES
-      ? base.filas
-      : base.filas.filter((f) => claveSector(f.sector) === objetivo);
+      ? todasLasFilas
+      : todasLasFilas.filter((f) => claveSector(f.sector) === objetivo);
 
   const payload: DataPayload = {
     actualizado: base.actualizado,

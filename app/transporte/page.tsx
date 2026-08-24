@@ -88,6 +88,12 @@ export default function TransportePage() {
             >
               Volver a solicitudes
             </a>
+            <a
+              href="/transporte/nueva"
+              className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+            >
+              + Nuevo pedido
+            </a>
           </div>
         </div>
       </div>

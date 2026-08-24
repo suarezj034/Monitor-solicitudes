@@ -199,5 +199,6 @@ export function parseSolicitudes(buf: ArrayBuffer): Solicitud[] {
     oc: f.oc,
     fechaRecepcion: f.fechaRecepcion,
     adjuntos: f.adjuntos,
+    solicitante: f.nombre,
   }));
 }
