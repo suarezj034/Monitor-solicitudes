@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { saveBinary } from "@/lib/storage";
 import { extraerDatos, IA_HABILITADA } from "@/lib/extract";
+import { adminOk } from "@/lib/adminAuth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-function adminOk(req: NextRequest, pass: string): boolean {
-  return !!process.env.ADMIN_PASSWORD && pass === process.env.ADMIN_PASSWORD;
-}
 
 const TIPOS_OK = new Set([
   "application/pdf",
@@ -29,7 +26,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Solicitud inválida." }, { status: 400 });
   }
 
-  if (!adminOk(req, String(form.get("password") ?? ""))) {
+  const okForm =
+    !!process.env.ADMIN_PASSWORD && String(form.get("password") ?? "") === process.env.ADMIN_PASSWORD;
+  if (!okForm && !(await adminOk(req))) {
     return NextResponse.json({ error: "Contraseña de admin incorrecta." }, { status: 401 });
   }
 

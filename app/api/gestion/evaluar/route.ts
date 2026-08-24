@@ -1,18 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { loadGestion } from "@/lib/gestion";
 import { analizarCompra, IA_HABILITADA } from "@/lib/extract";
+import { montoComparable } from "@/lib/moneda";
+import { adminOk } from "@/lib/adminAuth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function adminOk(req: NextRequest): boolean {
-  const pass = req.headers.get("x-admin-password") ?? "";
-  return !!process.env.ADMIN_PASSWORD && pass === process.env.ADMIN_PASSWORD;
-}
-
-/** POST { nroSolicitud }: evalúa las cotizaciones de esa solicitud con IA. */
+/** POST { nroSolicitud, refTipo }: evalúa las cotizaciones de esa solicitud con IA. */
 export async function POST(req: NextRequest) {
-  if (!adminOk(req)) {
+  if (!(await adminOk(req))) {
     return NextResponse.json({ error: "Contraseña de admin incorrecta." }, { status: 401 });
   }
 
@@ -39,7 +36,7 @@ export async function POST(req: NextRequest) {
     .filter(
       (p) => norm(p.nroSolicitud) === norm(nro) && (p.refTipo === "id" ? "id" : "nro") === refTipo
     )
-    .sort((a, b) => (a.monto ?? Infinity) - (b.monto ?? Infinity));
+    .sort((a, b) => (montoComparable(a) ?? Infinity) - (montoComparable(b) ?? Infinity));
 
   if (items.length === 0) {
     return NextResponse.json(

@@ -5,20 +5,15 @@ import {
   upsertPresupuesto,
 } from "@/lib/gestion";
 import { IA_HABILITADA } from "@/lib/extract";
+import { adminOk } from "@/lib/adminAuth";
 import type { Presupuesto } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** Valida la contraseña de admin que viaja en el header. */
-function adminOk(req: NextRequest): boolean {
-  const pass = req.headers.get("x-admin-password") ?? "";
-  return !!process.env.ADMIN_PASSWORD && pass === process.env.ADMIN_PASSWORD;
-}
-
 /** GET: lista de presupuestos (requiere admin). */
 export async function GET(req: NextRequest) {
-  if (!adminOk(req)) {
+  if (!(await adminOk(req))) {
     return NextResponse.json({ error: "Contraseña de admin incorrecta." }, { status: 401 });
   }
   const data = await loadGestion();
@@ -30,7 +25,7 @@ export async function GET(req: NextRequest) {
 
 /** POST: crea o actualiza un presupuesto (requiere admin). */
 export async function POST(req: NextRequest) {
-  if (!adminOk(req)) {
+  if (!(await adminOk(req))) {
     return NextResponse.json({ error: "Contraseña de admin incorrecta." }, { status: 401 });
   }
   const body = (await req.json().catch(() => ({}))) as Partial<Presupuesto>;
@@ -45,6 +40,8 @@ export async function POST(req: NextRequest) {
     refTipo: body.refTipo === "id" ? "id" : "nro",
     monto: typeof body.monto === "number" ? body.monto : null,
     moneda: (body.moneda ?? "").trim().toUpperCase(),
+    incluyeIva: body.incluyeIva === true,
+    alicuotaIva: typeof body.alicuotaIva === "number" ? body.alicuotaIva : null,
     tipoCambio: typeof body.tipoCambio === "number" ? body.tipoCambio : null,
     tipoCambioFecha:
       typeof body.tipoCambioFecha === "string" && body.tipoCambioFecha.trim()
@@ -61,16 +58,17 @@ export async function POST(req: NextRequest) {
     actualizado: ahora,
   };
   const presupuestos = await upsertPresupuesto(p);
-  return NextResponse.json({ ok: true, presupuesto: p, total: presupuestos.length });
+  // Devolvemos la lista completa para que el cliente no tenga que releerla.
+  return NextResponse.json({ ok: true, presupuesto: p, presupuestos, total: presupuestos.length });
 }
 
 /** DELETE: elimina un presupuesto por id (requiere admin). */
 export async function DELETE(req: NextRequest) {
-  if (!adminOk(req)) {
+  if (!(await adminOk(req))) {
     return NextResponse.json({ error: "Contraseña de admin incorrecta." }, { status: 401 });
   }
   const id = req.nextUrl.searchParams.get("id");
   if (!id) return NextResponse.json({ error: "Falta id." }, { status: 400 });
   const presupuestos = await deletePresupuesto(id);
-  return NextResponse.json({ ok: true, total: presupuestos.length });
+  return NextResponse.json({ ok: true, presupuestos, total: presupuestos.length });
 }

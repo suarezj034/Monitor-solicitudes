@@ -30,6 +30,10 @@ export interface Presupuesto {
   proveedor: string;
   monto: number | null;
   moneda: string; // ARS | USD | ...
+  /** Si el monto ya incluye IVA (ej. Mercado Libre = precio final). */
+  incluyeIva: boolean;
+  /** Alícuota de IVA a descontar cuando incluyeIva (por defecto 21). */
+  alicuotaIva: number | null;
   /** Dólar venta (BNA) capturado al cargar, para convertir USD a pesos. */
   tipoCambio: number | null;
   /** Fecha del dólar usado (dd/mm/aaaa). */
@@ -56,6 +60,8 @@ export interface DatosExtraidos {
   proveedor: string;
   monto: number | null;
   moneda: string;
+  /** true si el documento indica que el precio ya incluye IVA / es final. */
+  incluyeIva: boolean;
   plazoEntrega: string;
   plazoPago: string;
   validez: string;

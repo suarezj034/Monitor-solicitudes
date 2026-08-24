@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { DatosExtraidos, Presupuesto } from "@/lib/types";
-import { montoEnPesos } from "@/lib/moneda";
+import { montoComparable } from "@/lib/moneda";
 
 const MONEDAS = ["ARS", "USD", "EUR"];
 
@@ -33,6 +33,8 @@ const vacio = (nro = "", refTipo: "nro" | "id" = "nro"): Partial<Presupuesto> =>
   proveedor: "",
   monto: null,
   moneda: "ARS",
+  incluyeIva: false,
+  alicuotaIva: 21,
   tipoCambio: null,
   tipoCambioFecha: null,
   plazoEntrega: "",
@@ -72,15 +74,39 @@ export default function GestionPage() {
   const [verSolicitud, setVerSolicitud] = useState("");
   const [evaluando, setEvaluando] = useState<string | null>(null);
   const [evalError, setEvalError] = useState<string | null>(null);
+  const [verificando, setVerificando] = useState(true);
 
   const authHeaders = { "x-admin-password": pass };
+
+  // Al montar: si ya hay cookie de sesión de admin válida, entra directo.
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/gestion", { cache: "no-store" });
+        if (res.ok) {
+          const json = await res.json();
+          setPresupuestos(json.presupuestos ?? []);
+          setIaHabilitada(!!json.iaHabilitada);
+          setAuthed(true);
+        }
+      } catch {
+        /* sin sesión: se muestra el login */
+      } finally {
+        setVerificando(false);
+      }
+    })();
+  }, []);
 
   async function ingresar(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/gestion", { headers: authHeaders, cache: "no-store" });
+      const res = await fetch("/api/gestion/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: pass }),
+      });
       const json = await res.json();
       if (!res.ok) {
         setError(json.error ?? "No se pudo ingresar.");
@@ -148,6 +174,8 @@ export default function GestionPage() {
           proveedor: d.proveedor || f.proveedor,
           monto: d.monto ?? f.monto,
           moneda: d.moneda || f.moneda,
+          incluyeIva: d.incluyeIva || f.incluyeIva,
+          alicuotaIva: f.alicuotaIva ?? 21,
           plazoEntrega: d.plazoEntrega || f.plazoEntrega,
           plazoPago: d.plazoPago || f.plazoPago,
           validez: d.validez || f.validez,
@@ -185,7 +213,8 @@ export default function GestionPage() {
       const nro = form.nroSolicitud;
       const tipo = (form.refTipo ?? "nro") as "nro" | "id";
       setForm(vacio(nro, tipo));
-      await recargar();
+      // La respuesta ya trae la lista actualizada; no hace falta releer.
+      if (Array.isArray(json.presupuestos)) setPresupuestos(json.presupuestos);
     } finally {
       setBusy(false);
     }
@@ -193,11 +222,20 @@ export default function GestionPage() {
 
   async function eliminar(id: string) {
     if (!confirm("¿Eliminar este presupuesto?")) return;
-    await fetch(`/api/gestion?id=${encodeURIComponent(id)}`, {
+    const res = await fetch(`/api/gestion?id=${encodeURIComponent(id)}`, {
       method: "DELETE",
       headers: authHeaders,
     });
-    await recargar();
+    const json = await res.json().catch(() => ({}));
+    if (Array.isArray(json.presupuestos)) setPresupuestos(json.presupuestos);
+    else await recargar();
+  }
+
+  async function salir() {
+    await fetch("/api/gestion/login", { method: "DELETE" });
+    setAuthed(false);
+    setPass("");
+    setPresupuestos([]);
   }
 
   function editar(p: Presupuesto) {
@@ -273,19 +311,20 @@ export default function GestionPage() {
     );
 
     const idxBarato = g.items.findIndex(
-      (p) => montoEnPesos(p) != null && montoEnPesos(p) === g.barato
+      (p) => montoComparable(p) != null && montoComparable(p) === g.barato
     );
 
     autoTable(doc, {
       startY: 42,
       head: [["Proveedor", "Producto / Detalle", "Monto", "Entrega", "Pago", "Validez"]],
       body: g.items.map((p) => {
-        const ars = montoEnPesos(p);
-        // El PDF usa una fuente sin "≈"; se usa "= $..." (sin decimales) y sin miles cortados.
-        const montoTxt =
-          p.moneda !== "ARS" && ars != null
-            ? `${fmtMonto(p.monto, p.moneda)}\n= $${Math.round(ars).toLocaleString("es-AR")}`
-            : fmtMonto(p.monto, p.moneda);
+        const neto = montoComparable(p);
+        // Monto original (con IVA si corresponde) y debajo el neto en pesos (base de comparación).
+        const l1 = `${fmtMonto(p.monto, p.moneda)}${p.incluyeIva ? " (IVA incl.)" : ""}`;
+        const mostrarNeto = neto != null && (p.moneda !== "ARS" || p.incluyeIva);
+        const montoTxt = mostrarNeto
+          ? `${l1}\nneto: $${Math.round(neto!).toLocaleString("es-AR")}`
+          : l1;
         return [
           p.proveedor || "—",
           p.detalle || "—",
@@ -313,12 +352,15 @@ export default function GestionPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let y = ((doc as any).lastAutoTable?.finalY ?? 60) + 7;
 
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(7.5);
+    doc.setTextColor(124, 143, 134);
+    doc.text("Base de comparación: precios sin IVA (neto), en pesos.", 14, y);
+    y += 4;
+
     const usd = g.items.filter((p) => p.moneda === "USD" && p.tipoCambio);
     if (usd.length > 0) {
-      doc.setFont("helvetica", "italic");
-      doc.setFontSize(7.5);
-      doc.setTextColor(124, 143, 134);
-      doc.text("Comparación en pesos · USD convertido al dólar venta BNA:", 14, y);
+      doc.text("USD convertido al dólar venta BNA:", 14, y);
       y += 4;
       for (const p of usd) {
         const f = p.tipoCambioFecha ? ` (${p.tipoCambioFecha})` : "";
@@ -329,14 +371,14 @@ export default function GestionPage() {
         );
         y += 4;
       }
-      y += 2;
     }
+    y += 3;
 
     if (g.ahorro != null && g.ahorro > 0) {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10);
       doc.setTextColor(12, 75, 54);
-      doc.text(`Ahorro potencial (en pesos): ${fmtMonto(g.ahorro, "ARS")}`, 14, y);
+      doc.text(`Ahorro potencial (neto, sin IVA): ${fmtMonto(g.ahorro, "ARS")}`, 14, y);
       y += 8;
     }
 
@@ -390,16 +432,16 @@ export default function GestionPage() {
     return Array.from(map.entries())
       .map(([k, items]) => {
         const [tipo, nro] = k.split("␟");
-        // Comparación EN PESOS (USD convertido con el dólar de cada cotización).
+        // Comparación en pesos NETOS (sin IVA; USD convertido con su dólar).
         const ordenados = [...items].sort(
-          (a, b) => (montoEnPesos(a) ?? Infinity) - (montoEnPesos(b) ?? Infinity)
+          (a, b) => (montoComparable(a) ?? Infinity) - (montoComparable(b) ?? Infinity)
         );
-        const enPesos = ordenados
-          .map((p) => montoEnPesos(p))
+        const netos = ordenados
+          .map((p) => montoComparable(p))
           .filter((v): v is number => v != null)
           .sort((a, b) => a - b);
-        const barato = enPesos[0] ?? null;
-        const caro = enPesos.length ? enPesos[enPesos.length - 1] : null;
+        const barato = netos[0] ?? null;
+        const caro = netos.length ? netos[netos.length - 1] : null;
         const ahorro = barato != null && caro != null ? caro - barato : null;
         return { nro, refTipo: tipo as "nro" | "id", items: ordenados, barato, caro, ahorro };
       })
@@ -411,6 +453,15 @@ export default function GestionPage() {
     if (!q) return grupos;
     return grupos.filter((g) => g.nro.toLowerCase().includes(q));
   }, [grupos, verSolicitud]);
+
+  // ---------- Verificando sesión ----------
+  if (!authed && verificando) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-brand-50 to-slate-100 text-sm text-slate-400">
+        Cargando…
+      </div>
+    );
+  }
 
   // ---------- Login ----------
   if (!authed) {
@@ -471,16 +522,24 @@ export default function GestionPage() {
               </p>
             </div>
           </div>
-          <span
-            className={`rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ${
-              iaHabilitada
-                ? "bg-brand-100 text-brand-800 ring-brand-200"
-                : "bg-slate-100 text-slate-500 ring-slate-200"
-            }`}
-            title={iaHabilitada ? "Lectura con IA activa" : "Carga manual (sin API key)"}
-          >
-            {iaHabilitada ? "IA activa" : "Carga manual"}
-          </span>
+          <div className="flex items-center gap-2">
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ${
+                iaHabilitada
+                  ? "bg-brand-100 text-brand-800 ring-brand-200"
+                  : "bg-slate-100 text-slate-500 ring-slate-200"
+              }`}
+              title={iaHabilitada ? "Lectura con IA activa" : "Carga manual (sin API key)"}
+            >
+              {iaHabilitada ? "IA activa" : "Carga manual"}
+            </span>
+            <button
+              onClick={salir}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm hover:bg-slate-50"
+            >
+              Salir
+            </button>
+          </div>
         </div>
       </div>
 
@@ -622,6 +681,36 @@ export default function GestionPage() {
                   className={inputCls}
                 />
               </Campo>
+            </div>
+
+            <div className="rounded-lg bg-slate-50 p-3 ring-1 ring-slate-200">
+              <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={!!form.incluyeIva}
+                  onChange={(e) => set("incluyeIva", e.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                />
+                El precio incluye IVA (precio final, ej. Mercado Libre)
+              </label>
+              {form.incluyeIva && (
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-xs text-slate-500">Alícuota IVA</span>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={form.alicuotaIva ?? 21}
+                    onChange={(e) =>
+                      set("alicuotaIva", e.target.value === "" ? null : Number(e.target.value))
+                    }
+                    className="w-20 rounded-lg border border-slate-300 px-2 py-1 text-sm"
+                  />
+                  <span className="text-xs text-slate-500">%</span>
+                </div>
+              )}
+              <p className="mt-1 text-[11px] text-slate-400">
+                La comparación entre cotizaciones se hace sobre el precio SIN IVA (neto).
+              </p>
             </div>
 
             {form.moneda === "USD" && (
@@ -787,8 +876,11 @@ export default function GestionPage() {
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {g.items.map((p) => {
-                          const pesos = montoEnPesos(p);
-                          const esBarato = pesos != null && pesos === g.barato;
+                          const neto = montoComparable(p);
+                          const esBarato = neto != null && neto === g.barato;
+                          // Mostrar el neto (base de comparación) cuando difiere del bruto.
+                          const mostrarNeto =
+                            neto != null && (p.moneda !== "ARS" || p.incluyeIva);
                           return (
                             <tr key={p.id} className={esBarato ? "bg-emerald-50/60" : ""}>
                               <td className="px-4 py-2.5 font-medium text-slate-700">
@@ -804,9 +896,14 @@ export default function GestionPage() {
                               </td>
                               <td className="whitespace-nowrap px-4 py-2.5 font-semibold text-slate-800">
                                 {fmtMonto(p.monto, p.moneda)}
-                                {p.moneda !== "ARS" && pesos != null && (
+                                {p.incluyeIva && (
+                                  <span className="ml-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">
+                                    IVA incl.
+                                  </span>
+                                )}
+                                {mostrarNeto && (
                                   <div className="text-xs font-normal text-slate-400">
-                                    ≈ {fmtMonto(pesos, "ARS")}
+                                    neto: {fmtMonto(neto, "ARS")}
                                   </div>
                                 )}
                                 {p.moneda === "USD" && p.tipoCambio && (

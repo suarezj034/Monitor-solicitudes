@@ -72,6 +72,35 @@ export async function verifySession(
 
 export const SESSION_COOKIE = "session";
 export const SECTOR_COOKIE = "sector";
+export const ADMIN_COOKIE = "gadmin";
+
+/** Sesión de administrador (para /gestion), por defecto 8 horas. */
+export async function createAdminToken(
+  secret: string,
+  ttlSec = 60 * 60 * 8
+): Promise<string> {
+  const payload = JSON.stringify({ a: 1, exp: Math.floor(Date.now() / 1000) + ttlSec });
+  const b64 = base64url(enc.encode(payload));
+  const sig = await hmac(secret, b64);
+  return `${b64}.${sig}`;
+}
+
+/** true si el token de admin es válido y no venció. */
+export async function readAdminToken(
+  token: string | undefined,
+  secret: string
+): Promise<boolean> {
+  if (!token) return false;
+  const [b64, sig] = token.split(".");
+  if (!b64 || !sig) return false;
+  if ((await hmac(secret, b64)) !== sig) return false;
+  try {
+    const payload = JSON.parse(fromBase64url(b64)) as { exp?: number };
+    return typeof payload.exp === "number" && payload.exp >= Math.floor(Date.now() / 1000);
+  } catch {
+    return false;
+  }
+}
 
 /** Valor que representa "ve todos los sectores" (código maestro). */
 export const TODOS_LOS_SECTORES = "*";

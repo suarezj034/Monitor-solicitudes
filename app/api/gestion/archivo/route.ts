@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { loadBinary } from "@/lib/storage";
+import { adminOk } from "@/lib/adminAuth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /** Sirve un documento guardado (proxy autenticado del Blob privado). */
 export async function GET(req: NextRequest) {
-  const pass = req.nextUrl.searchParams.get("password") ?? "";
-  if (!process.env.ADMIN_PASSWORD || pass !== process.env.ADMIN_PASSWORD) {
+  if (!(await adminOk(req))) {
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   }
   const key = req.nextUrl.searchParams.get("key") ?? "";

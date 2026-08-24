@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { adminOk } from "@/lib/adminAuth";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function adminOk(req: NextRequest): boolean {
-  const pass = req.headers.get("x-admin-password") ?? "";
-  return !!process.env.ADMIN_PASSWORD && pass === process.env.ADMIN_PASSWORD;
-}
-
 /** GET: dólar venta oficial (Banco Nación), vía API pública gratuita. */
 export async function GET(req: NextRequest) {
-  if (!adminOk(req)) {
+  if (!(await adminOk(req))) {
     return NextResponse.json({ error: "Contraseña de admin incorrecta." }, { status: 401 });
   }
   try {

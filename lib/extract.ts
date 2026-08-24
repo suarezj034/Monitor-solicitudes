@@ -1,5 +1,5 @@
 import type { DatosExtraidos, Presupuesto } from "./types";
-import { montoEnPesos } from "./moneda";
+import { montoComparable } from "./moneda";
 
 /** La lectura con IA usa Google Gemini (nivel gratuito). */
 export const IA_HABILITADA = () => !!process.env.GEMINI_API_KEY;
@@ -64,11 +64,13 @@ Respondé ÚNICAMENTE con un objeto JSON válido, sin texto adicional, sin markd
   "proveedor": string,        // razón social del proveedor
   "monto": number|null,       // importe total; solo el número, sin símbolos ni separadores de miles
   "moneda": string,           // "ARS", "USD" u otra; "" si no se indica
+  "incluyeIva": boolean,      // true si el precio es final / IVA incluido; false si es neto o no se aclara
   "plazoEntrega": string,     // plazo/fecha de entrega tal como figura; "" si no está
   "plazoPago": string,        // condición de pago (ej. "30 días", "contado"); "" si no está
   "validez": string,          // validez de la oferta; "" si no está
   "detalle": string           // breve descripción de lo cotizado (1 línea)
 }
+Sobre incluyeIva: poné true si el documento dice "IVA incluido", "precio final", "final", "IVA inc." o es de Mercado Libre; en caso de duda, false.
 Si un dato no aparece, poné "" (o null en monto). No inventes valores.`;
 
 /** Lee un documento con Gemini y devuelve los datos estructurados. */
@@ -90,7 +92,7 @@ Respondé ÚNICAMENTE con un objeto JSON válido, sin markdown, con estas claves
   "analisis": string       // UNA sola oración de máximo 20 palabras
 }
 Reglas de decisión:
-- El criterio PRINCIPAL es el menor monto EN PESOS. Recomendá al más barato en pesos, salvo que tenga una desventaja clara y GRAVE en entrega o pago.
+- El criterio PRINCIPAL es el menor monto NETO EN PESOS (sin IVA). Recomendá al más barato en pesos netos, salvo que tenga una desventaja clara y GRAVE en entrega o pago.
 - El plazo de entrega puede venir como texto ("7 días") o como fecha concreta ("24/08/2026"). Una fecha del mes en curso o cercana es un plazo CORTO; NO la interpretes como meses o años, ni la penalices como "plazo largo".
 - No inventes duraciones ni datos que no figuran.
 - Mencioná el ahorro concreto en pesos. Español rioplatense. UNA sola oración breve, sin repetir "recomendado".`;
@@ -108,19 +110,19 @@ export async function analizarCompra(
   const lineas = items.map((p, i) => {
     const orig =
       typeof p.monto === "number"
-        ? `${p.moneda || ""} ${p.monto.toLocaleString("es-AR")}`.trim()
+        ? `${p.moneda || ""} ${p.monto.toLocaleString("es-AR")}${p.incluyeIva ? " (IVA incl.)" : ""}`.trim()
         : "sin monto";
-    const ars = montoEnPesos(p);
+    const neto = montoComparable(p);
     const pesos =
-      ars != null
-        ? `$${ars.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`
+      neto != null
+        ? `$${neto.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`
         : "no comparable (falta tipo de cambio)";
     return [
       `Cotización ${i + 1}:`,
       `  Proveedor: ${p.proveedor || "(sin nombre)"}`,
       `  Producto/detalle: ${p.detalle || "-"}`,
       `  Monto original: ${orig}`,
-      `  Monto EN PESOS: ${pesos}`,
+      `  Monto NETO EN PESOS (sin IVA, base de comparación): ${pesos}`,
       `  Entrega: ${p.plazoEntrega || "-"}`,
       `  Pago: ${p.plazoPago || "-"}`,
     ].join("\n");
@@ -171,6 +173,7 @@ function parseJson(texto: string): DatosExtraidos {
     proveedor: str(obj.proveedor),
     monto,
     moneda: str(obj.moneda).toUpperCase(),
+    incluyeIva: obj.incluyeIva === true,
     plazoEntrega: str(obj.plazoEntrega),
     plazoPago: str(obj.plazoPago),
     validez: str(obj.validez),
