@@ -8,19 +8,33 @@ const MONEDAS = ["ARS", "USD", "EUR"];
 
 type Grupo = {
   nro: string;
+  refTipo: "nro" | "id";
   items: Presupuesto[];
   barato: number | null;
   caro: number | null;
   ahorro: number | null;
 };
 
-const vacio = (nro = ""): Partial<Presupuesto> => ({
+/** Etiqueta corta según se identifique por Nº o por ID. */
+const refLabel = (t: "nro" | "id") => (t === "id" ? "ID" : "Nº");
+/** Clave única de un grupo (tipo + valor), para no mezclar Nº 5 con ID 5. */
+const gid = (g: Grupo) => `${g.refTipo}:${g.nro}`;
+const hoyFecha = () => new Date().toLocaleDateString("es-AR");
+function fechaCorta(iso?: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? iso : d.toLocaleDateString("es-AR");
+}
+
+const vacio = (nro = "", refTipo: "nro" | "id" = "nro"): Partial<Presupuesto> => ({
   id: "",
   nroSolicitud: nro,
+  refTipo,
   proveedor: "",
   monto: null,
   moneda: "ARS",
   tipoCambio: null,
+  tipoCambioFecha: null,
   plazoEntrega: "",
   plazoPago: "",
   validez: "",
@@ -99,7 +113,11 @@ export default function GestionPage() {
       });
       const j = await res.json();
       if (res.ok && typeof j.venta === "number") {
-        setForm((f) => ({ ...f, tipoCambio: j.venta }));
+        setForm((f) => ({
+          ...f,
+          tipoCambio: j.venta,
+          tipoCambioFecha: fechaCorta(j.fecha) || hoyFecha(),
+        }));
       }
     } catch {
       /* silencioso: se puede cargar a mano */
@@ -148,7 +166,7 @@ export default function GestionPage() {
     setError(null);
     setOkMsg(null);
     if (!form.nroSolicitud?.trim()) {
-      setError("Ingresá el Nº de solicitud.");
+      setError(`Ingresá el ${refLabel(form.refTipo ?? "nro")} de solicitud.`);
       return;
     }
     setBusy(true);
@@ -165,7 +183,8 @@ export default function GestionPage() {
       }
       setOkMsg(form.id ? "Presupuesto actualizado." : "Presupuesto guardado.");
       const nro = form.nroSolicitud;
-      setForm(vacio(nro));
+      const tipo = (form.refTipo ?? "nro") as "nro" | "id";
+      setForm(vacio(nro, tipo));
       await recargar();
     } finally {
       setBusy(false);
@@ -194,13 +213,13 @@ export default function GestionPage() {
 
   /** Pide la evaluación IA de una solicitud y descarga el PDF comparativo. */
   async function generarEvaluacion(g: Grupo) {
-    setEvaluando(g.nro);
+    setEvaluando(gid(g));
     setEvalError(null);
     try {
       const res = await fetch("/api/gestion/evaluar", {
         method: "POST",
         headers: { ...authHeaders, "Content-Type": "application/json" },
-        body: JSON.stringify({ nroSolicitud: g.nro }),
+        body: JSON.stringify({ nroSolicitud: g.nro, refTipo: g.refTipo }),
       });
       const json = await res.json();
       if (!res.ok) {
@@ -241,7 +260,7 @@ export default function GestionPage() {
     doc.setTextColor(16, 32, 26);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
-    doc.text(`Evaluación de compra — Solicitud ${g.nro}`, 14, 30);
+    doc.text(`Evaluación de compra — Solicitud ${refLabel(g.refTipo)} ${g.nro}`, 14, 30);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     doc.setTextColor(100, 116, 139);
@@ -294,17 +313,23 @@ export default function GestionPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let y = ((doc as any).lastAutoTable?.finalY ?? 60) + 7;
 
-    const hayUsd = g.items.some((p) => p.moneda === "USD" && p.tipoCambio);
-    if (hayUsd) {
+    const usd = g.items.filter((p) => p.moneda === "USD" && p.tipoCambio);
+    if (usd.length > 0) {
       doc.setFont("helvetica", "italic");
       doc.setFontSize(7.5);
       doc.setTextColor(124, 143, 134);
-      doc.text(
-        "Comparación en pesos · USD convertido al dólar venta BNA de cada cotización.",
-        14,
-        y
-      );
-      y += 6;
+      doc.text("Comparación en pesos · USD convertido al dólar venta BNA:", 14, y);
+      y += 4;
+      for (const p of usd) {
+        const f = p.tipoCambioFecha ? ` (${p.tipoCambioFecha})` : "";
+        doc.text(
+          `   ${p.proveedor || "Proveedor"}: dólar ${fmtMonto(p.tipoCambio, "ARS")}${f}`,
+          14,
+          y
+        );
+        y += 4;
+      }
+      y += 2;
     }
 
     if (g.ahorro != null && g.ahorro > 0) {
@@ -351,17 +376,20 @@ export default function GestionPage() {
     doc.save(nombre);
   }
 
-  // Agrupar por Nº de solicitud.
-  const grupos = useMemo(() => {
+  // Agrupar por (tipo de referencia + valor), para no mezclar un Nº con una ID.
+  const grupos = useMemo<Grupo[]>(() => {
     const norm = (s: string) => s.replace(/\s+/g, " ").trim();
     const map = new Map<string, Presupuesto[]>();
     for (const p of presupuestos) {
-      const k = norm(p.nroSolicitud) || "(sin Nº)";
+      const tipo: "nro" | "id" = p.refTipo === "id" ? "id" : "nro";
+      const val = norm(p.nroSolicitud) || "(sin Nº)";
+      const k = `${tipo}␟${val}`;
       if (!map.has(k)) map.set(k, []);
       map.get(k)!.push(p);
     }
     return Array.from(map.entries())
-      .map(([nro, items]) => {
+      .map(([k, items]) => {
+        const [tipo, nro] = k.split("␟");
         // Comparación EN PESOS (USD convertido con el dólar de cada cotización).
         const ordenados = [...items].sort(
           (a, b) => (montoEnPesos(a) ?? Infinity) - (montoEnPesos(b) ?? Infinity)
@@ -373,7 +401,7 @@ export default function GestionPage() {
         const barato = enPesos[0] ?? null;
         const caro = enPesos.length ? enPesos[enPesos.length - 1] : null;
         const ahorro = barato != null && caro != null ? caro - barato : null;
-        return { nro, items: ordenados, barato, caro, ahorro };
+        return { nro, refTipo: tipo as "nro" | "id", items: ordenados, barato, caro, ahorro };
       })
       .sort((a, b) => a.nro.localeCompare(b.nro, "es", { numeric: true }));
   }, [presupuestos]);
@@ -467,12 +495,36 @@ export default function GestionPage() {
           </p>
 
           <form onSubmit={guardar} className="mt-4 space-y-4">
+            <div>
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                ¿Cómo identificás la solicitud? *
+              </span>
+              <div className="inline-flex rounded-lg border border-slate-300 bg-slate-100 p-0.5 text-sm">
+                {(["nro", "id"] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => set("refTipo", t)}
+                    className={`rounded-md px-4 py-1.5 font-semibold transition ${
+                      (form.refTipo ?? "nro") === t
+                        ? "bg-brand-600 text-white shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    {t === "nro" ? "Nº de solicitud" : "ID"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="grid gap-4 sm:grid-cols-2">
-              <Campo label="Nº de solicitud *">
+              <Campo label={`${refLabel(form.refTipo ?? "nro")} de solicitud *`}>
                 <input
                   value={form.nroSolicitud ?? ""}
                   onChange={(e) => set("nroSolicitud", e.target.value)}
-                  placeholder="Ej.: 128 o 2026-08"
+                  placeholder={
+                    (form.refTipo ?? "nro") === "id" ? "Ej.: 508" : "Ej.: 128 o 2026-08"
+                  }
                   className={inputCls}
                 />
               </Campo>
@@ -580,9 +632,14 @@ export default function GestionPage() {
                       type="number"
                       step="0.01"
                       value={form.tipoCambio ?? ""}
-                      onChange={(e) =>
-                        set("tipoCambio", e.target.value === "" ? null : Number(e.target.value))
-                      }
+                      onChange={(e) => {
+                        const v = e.target.value === "" ? null : Number(e.target.value);
+                        setForm((f) => ({
+                          ...f,
+                          tipoCambio: v,
+                          tipoCambioFecha: v == null ? null : hoyFecha(),
+                        }));
+                      }}
                       placeholder="Ej.: 1300"
                       className={inputCls}
                     />
@@ -597,6 +654,7 @@ export default function GestionPage() {
                 </Campo>
                 <p className="mt-1 text-[11px] text-amber-700">
                   Se usa para convertir el monto a pesos y comparar contra cotizaciones en $.
+                  {form.tipoCambioFecha && ` (dólar del ${form.tipoCambioFecha})`}
                 </p>
               </div>
             )}
@@ -664,7 +722,7 @@ export default function GestionPage() {
             <input
               value={verSolicitud}
               onChange={(e) => setVerSolicitud(e.target.value)}
-              placeholder="Buscar Nº de solicitud…"
+              placeholder="Buscar Nº o ID de solicitud…"
               className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200 sm:w-64"
             />
           </div>
@@ -683,13 +741,13 @@ export default function GestionPage() {
             <div className="space-y-4">
               {gruposVisibles.map((g) => (
                 <div
-                  key={g.nro}
+                  key={gid(g)}
                   className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50 px-4 py-2.5">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-bold text-slate-800">
-                        Solicitud {g.nro}
+                        Solicitud {refLabel(g.refTipo)} {g.nro}
                       </span>
                       <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-600">
                         {g.items.length} {g.items.length === 1 ? "cotización" : "cotizaciones"}
@@ -703,7 +761,7 @@ export default function GestionPage() {
                       )}
                       <button
                         onClick={() => generarEvaluacion(g)}
-                        disabled={!iaHabilitada || evaluando === g.nro}
+                        disabled={!iaHabilitada || evaluando === gid(g)}
                         title={
                           iaHabilitada
                             ? "Genera un PDF comparativo con evaluación de IA"
@@ -711,7 +769,7 @@ export default function GestionPage() {
                         }
                         className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        {evaluando === g.nro ? "Generando…" : "📄 Generar evaluación"}
+                        {evaluando === gid(g) ? "Generando…" : "📄 Generar evaluación"}
                       </button>
                     </div>
                   </div>
@@ -754,6 +812,7 @@ export default function GestionPage() {
                                 {p.moneda === "USD" && p.tipoCambio && (
                                   <div className="text-[10px] font-normal text-slate-400">
                                     dólar {fmtMonto(p.tipoCambio, "ARS")}
+                                    {p.tipoCambioFecha && ` · ${p.tipoCambioFecha}`}
                                   </div>
                                 )}
                               </td>

@@ -42,9 +42,14 @@ export async function POST(req: NextRequest) {
     id: body.id || crypto.randomUUID(),
     nroSolicitud: body.nroSolicitud.trim(),
     proveedor: (body.proveedor ?? "").trim(),
+    refTipo: body.refTipo === "id" ? "id" : "nro",
     monto: typeof body.monto === "number" ? body.monto : null,
     moneda: (body.moneda ?? "").trim().toUpperCase(),
     tipoCambio: typeof body.tipoCambio === "number" ? body.tipoCambio : null,
+    tipoCambioFecha:
+      typeof body.tipoCambioFecha === "string" && body.tipoCambioFecha.trim()
+        ? body.tipoCambioFecha.trim()
+        : null,
     plazoEntrega: (body.plazoEntrega ?? "").trim(),
     plazoPago: (body.plazoPago ?? "").trim(),
     validez: (body.validez ?? "").trim(),

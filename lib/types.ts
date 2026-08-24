@@ -23,13 +23,17 @@ export interface DataPayload {
  */
 export interface Presupuesto {
   id: string;
-  /** Nº de solicitud (sector) al que corresponde. */
+  /** Identificador de la solicitud (el valor del Nº o de la ID). */
   nroSolicitud: string;
+  /** Cómo se identifica la solicitud: por su Nº de sector o por su ID. */
+  refTipo: "nro" | "id";
   proveedor: string;
   monto: number | null;
   moneda: string; // ARS | USD | ...
   /** Dólar venta (BNA) capturado al cargar, para convertir USD a pesos. */
   tipoCambio: number | null;
+  /** Fecha del dólar usado (dd/mm/aaaa). */
+  tipoCambioFecha: string | null;
   plazoEntrega: string;
   plazoPago: string;
   validez: string;

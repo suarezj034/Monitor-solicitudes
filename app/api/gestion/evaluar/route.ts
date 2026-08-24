@@ -16,10 +16,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Contraseña de admin incorrecta." }, { status: 401 });
   }
 
-  const body = (await req.json().catch(() => ({}))) as { nroSolicitud?: string };
+  const body = (await req.json().catch(() => ({}))) as {
+    nroSolicitud?: string;
+    refTipo?: string;
+  };
   const nro = (body.nroSolicitud ?? "").replace(/\s+/g, " ").trim();
+  const refTipo = body.refTipo === "id" ? "id" : "nro";
   if (!nro) {
-    return NextResponse.json({ error: "Falta el Nº de solicitud." }, { status: 400 });
+    return NextResponse.json({ error: "Falta el identificador de la solicitud." }, { status: 400 });
   }
 
   if (!IA_HABILITADA()) {
@@ -32,12 +36,14 @@ export async function POST(req: NextRequest) {
   const { presupuestos } = await loadGestion();
   const norm = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();
   const items = presupuestos
-    .filter((p) => norm(p.nroSolicitud) === norm(nro))
+    .filter(
+      (p) => norm(p.nroSolicitud) === norm(nro) && (p.refTipo === "id" ? "id" : "nro") === refTipo
+    )
     .sort((a, b) => (a.monto ?? Infinity) - (b.monto ?? Infinity));
 
   if (items.length === 0) {
     return NextResponse.json(
-      { error: `No hay presupuestos cargados para la solicitud ${nro}.` },
+      { error: `No hay presupuestos cargados para esa solicitud.` },
       { status: 404 }
     );
   }
