@@ -1,3 +1,6 @@
+/** Qué tan urgente es: para decidir si negociar/buscar proveedor o resolver ya. */
+export type Celeridad = "URGENTE" | "SEMANA" | "NEGOCIAR";
+
 export interface Solicitud {
   nroSolicitud: string;
   sector: string;
@@ -11,6 +14,8 @@ export interface Solicitud {
   solicitante: string;
   /** "app" si se cargó con el formulario propio; ausente = viene del Excel. */
   origen?: "app";
+  /** Urgencia declarada al cargar (solo en las de la app). */
+  celeridad?: Celeridad;
 }
 
 export interface DataPayload {
@@ -36,6 +41,10 @@ export interface Pedido {
   estado: string;
   /** "app" si se cargó con el formulario propio; ausente = viene del Excel. */
   origen?: "app";
+  /** Urgencia declarada al cargar (solo en los de la app). */
+  celeridad?: Celeridad;
+  /** URLs de archivos adjuntos (solo en los de la app). */
+  adjuntos?: string[];
 }
 
 export interface LogisticaPayload {

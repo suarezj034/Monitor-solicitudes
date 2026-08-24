@@ -1,5 +1,5 @@
 import { loadJson, saveJson } from "./storage";
-import type { Pedido, PedidoAppPayload } from "./types";
+import type { Celeridad, Pedido, PedidoAppPayload } from "./types";
 
 const KEY = "logistica-app.json";
 
@@ -12,6 +12,8 @@ export async function loadLogisticaApp(): Promise<PedidoAppPayload> {
 export async function crearPedidoApp(input: {
   nombre: string;
   detalle: string;
+  celeridad?: Celeridad;
+  adjuntos?: string[];
 }): Promise<Pedido> {
   const { siguienteId, filas } = await loadLogisticaApp();
   const nuevo: Pedido = {
@@ -20,16 +22,18 @@ export async function crearPedidoApp(input: {
     detalle: input.detalle,
     estado: "PENDIENTE",
     origen: "app",
+    celeridad: input.celeridad,
+    adjuntos: input.adjuntos ?? [],
   };
   filas.push(nuevo);
   await saveJson(KEY, { siguienteId: siguienteId + 1, filas } satisfies PedidoAppPayload);
   return nuevo;
 }
 
-/** Actualiza el estado de un pedido cargado por la app. */
+/** Actualiza el estado/adjuntos de un pedido cargado por la app. */
 export async function actualizarPedidoApp(
   id: string,
-  cambios: Partial<Pick<Pedido, "estado">>
+  cambios: Partial<Pick<Pedido, "estado" | "adjuntos">>
 ): Promise<Pedido | null> {
   const { siguienteId, filas } = await loadLogisticaApp();
   const i = filas.findIndex((f) => f.id === id);

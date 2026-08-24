@@ -5,6 +5,11 @@ import type { Pedido, Solicitud } from "@/lib/types";
 
 const ESTADOS_COMPRA = ["PENDIENTE", "COTIZANDO", "COTIZACION", "COMPRADO", "CANCELADO"];
 const ESTADOS_TRANSPORTE = ["PENDIENTE", "CONFIRMADO", "CANCELADO"];
+const CELERIDAD_LABELS: Record<string, string> = {
+  URGENTE: "Urgente",
+  SEMANA: "Dentro de la semana",
+  NEGOCIAR: "Para negociar",
+};
 
 function Stat({ label, value }: { label: string; value: number | string }) {
   return (
@@ -202,6 +207,8 @@ export default function AdminSolicitudesAppPage() {
                   <th className="px-3 py-2 text-left font-semibold">Sector</th>
                   <th className="px-3 py-2 text-left font-semibold">Solicitante</th>
                   <th className="px-3 py-2 text-left font-semibold">Detalle</th>
+                  <th className="px-3 py-2 text-left font-semibold">Celeridad</th>
+                  <th className="px-3 py-2 text-left font-semibold">Presup.</th>
                   <th className="px-3 py-2 text-left font-semibold">Estado</th>
                   <th className="px-3 py-2 text-left font-semibold">OC</th>
                   <th className="px-3 py-2 text-left font-semibold">Fecha estimada recep.</th>
@@ -211,7 +218,7 @@ export default function AdminSolicitudesAppPage() {
               <tbody>
                 {solicitudesApp.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-3 py-8 text-center text-slate-400">
+                    <td colSpan={10} className="px-3 py-8 text-center text-slate-400">
                       No hay solicitudes cargadas por la app todavía.
                     </td>
                   </tr>
@@ -227,6 +234,23 @@ export default function AdminSolicitudesAppPage() {
                       </td>
                       <td className="max-w-xs border-b border-slate-100 px-3 py-2" title={s.detalle}>
                         {s.detalle}
+                      </td>
+                      <td className="whitespace-nowrap border-b border-slate-100 px-3 py-2 text-xs">
+                        {CELERIDAD_LABELS[s.celeridad ?? ""] ?? "—"}
+                      </td>
+                      <td className="whitespace-nowrap border-b border-slate-100 px-3 py-2">
+                        {(s.adjuntos ?? []).length === 0 ? (
+                          "—"
+                        ) : (
+                          <a
+                            href={s.adjuntos[0]}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs font-medium text-brand-700 underline hover:text-brand-800"
+                          >
+                            Ver
+                          </a>
+                        )}
                       </td>
                       <td className="border-b border-slate-100 px-3 py-2">
                         <select
@@ -286,13 +310,15 @@ export default function AdminSolicitudesAppPage() {
                   <th className="px-3 py-2 text-left font-semibold">ID</th>
                   <th className="px-3 py-2 text-left font-semibold">Nombre</th>
                   <th className="px-3 py-2 text-left font-semibold">Detalle</th>
+                  <th className="px-3 py-2 text-left font-semibold">Celeridad</th>
+                  <th className="px-3 py-2 text-left font-semibold">Presup.</th>
                   <th className="px-3 py-2 text-left font-semibold">Estado</th>
                 </tr>
               </thead>
               <tbody>
                 {pedidosApp.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-3 py-8 text-center text-slate-400">
+                    <td colSpan={6} className="px-3 py-8 text-center text-slate-400">
                       No hay pedidos cargados por la app todavía.
                     </td>
                   </tr>
@@ -305,6 +331,23 @@ export default function AdminSolicitudesAppPage() {
                       <td className="whitespace-nowrap border-b border-slate-100 px-3 py-2">{p.nombre}</td>
                       <td className="max-w-md border-b border-slate-100 px-3 py-2" title={p.detalle}>
                         {p.detalle}
+                      </td>
+                      <td className="whitespace-nowrap border-b border-slate-100 px-3 py-2 text-xs">
+                        {CELERIDAD_LABELS[p.celeridad ?? ""] ?? "—"}
+                      </td>
+                      <td className="whitespace-nowrap border-b border-slate-100 px-3 py-2">
+                        {(p.adjuntos ?? []).length === 0 ? (
+                          "—"
+                        ) : (
+                          <a
+                            href={(p.adjuntos ?? [])[0]}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs font-medium text-brand-700 underline hover:text-brand-800"
+                          >
+                            Ver
+                          </a>
+                        )}
                       </td>
                       <td className="border-b border-slate-100 px-3 py-2">
                         <select

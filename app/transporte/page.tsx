@@ -21,6 +21,29 @@ function EstadoBadge({ estado }: { estado: string }) {
   );
 }
 
+const CELERIDAD_STYLES: Record<string, string> = {
+  URGENTE: "bg-rose-100 text-rose-700 ring-rose-200",
+  SEMANA: "bg-amber-100 text-amber-800 ring-amber-200",
+  NEGOCIAR: "bg-slate-100 text-slate-600 ring-slate-200",
+};
+const CELERIDAD_LABELS: Record<string, string> = {
+  URGENTE: "Urgente",
+  SEMANA: "Dentro de la semana",
+  NEGOCIAR: "Para negociar",
+};
+
+function CeleridadBadge({ celeridad }: { celeridad?: string }) {
+  if (!celeridad) return <span className="text-slate-300">—</span>;
+  const style = CELERIDAD_STYLES[celeridad] ?? "bg-slate-100 text-slate-700 ring-slate-200";
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset ${style}`}
+    >
+      {CELERIDAD_LABELS[celeridad] ?? celeridad}
+    </span>
+  );
+}
+
 export default function TransportePage() {
   const [data, setData] = useState<LogisticaPayload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,6 +59,8 @@ export default function TransportePage() {
         nombre: f.nombre ?? "",
         detalle: f.detalle ?? "",
         estado: f.estado ?? "",
+        celeridad: f.celeridad,
+        adjuntos: Array.isArray(f.adjuntos) ? f.adjuntos : [],
       }));
       setData({ ...json, filas });
     } finally {
@@ -131,18 +156,20 @@ export default function TransportePage() {
                   <th className="px-4 py-3 text-left font-semibold">Nombre</th>
                   <th className="px-4 py-3 text-left font-semibold">Detalle</th>
                   <th className="px-4 py-3 text-left font-semibold">Estado</th>
+                  <th className="px-4 py-3 text-left font-semibold">Celeridad</th>
+                  <th className="px-4 py-3 text-left font-semibold">Presupuesto</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={3} className="px-4 py-12 text-center text-slate-400">
+                    <td colSpan={5} className="px-4 py-12 text-center text-slate-400">
                       Cargando…
                     </td>
                   </tr>
                 ) : filas.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="px-4 py-12 text-center text-slate-400">
+                    <td colSpan={5} className="px-4 py-12 text-center text-slate-400">
                       No hay pedidos para mostrar.
                     </td>
                   </tr>
@@ -157,6 +184,28 @@ export default function TransportePage() {
                       </td>
                       <td className="whitespace-nowrap border-b border-slate-100 px-4 py-3">
                         <EstadoBadge estado={f.estado} />
+                      </td>
+                      <td className="whitespace-nowrap border-b border-slate-100 px-4 py-3">
+                        <CeleridadBadge celeridad={f.celeridad} />
+                      </td>
+                      <td className="whitespace-nowrap border-b border-slate-100 px-4 py-3">
+                        {(f.adjuntos ?? []).length === 0 ? (
+                          <span className="text-slate-300">—</span>
+                        ) : (
+                          <div className="flex flex-wrap gap-1.5">
+                            {(f.adjuntos ?? []).map((url, k) => (
+                              <a
+                                key={k}
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-700 transition hover:border-brand-300 hover:bg-brand-50 hover:text-brand-800"
+                              >
+                                📎 Ver
+                              </a>
+                            ))}
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))

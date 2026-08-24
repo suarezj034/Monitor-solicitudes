@@ -24,6 +24,29 @@ function EstadoBadge({ estado }: { estado: string }) {
   );
 }
 
+const CELERIDAD_STYLES: Record<string, string> = {
+  URGENTE: "bg-rose-100 text-rose-700 ring-rose-200",
+  SEMANA: "bg-amber-100 text-amber-800 ring-amber-200",
+  NEGOCIAR: "bg-slate-100 text-slate-600 ring-slate-200",
+};
+const CELERIDAD_LABELS: Record<string, string> = {
+  URGENTE: "Urgente",
+  SEMANA: "Dentro de la semana",
+  NEGOCIAR: "Para negociar",
+};
+
+function CeleridadBadge({ celeridad }: { celeridad?: string }) {
+  if (!celeridad) return <span className="text-slate-300">—</span>;
+  const style = CELERIDAD_STYLES[celeridad] ?? "bg-slate-100 text-slate-700 ring-slate-200";
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset ${style}`}
+    >
+      {CELERIDAD_LABELS[celeridad] ?? celeridad}
+    </span>
+  );
+}
+
 /** Nombre corto para el botón de un adjunto: el nombre del archivo si se puede. */
 function nombreAdjunto(url: string, i: number): string {
   try {
@@ -72,6 +95,7 @@ export default function Home() {
         adjuntos: Array.isArray(f.adjuntos) ? f.adjuntos : [],
         solicitante: f.solicitante ?? "",
         origen: f.origen,
+        celeridad: f.celeridad,
       }));
       setData({ ...json, filas });
     } finally {
@@ -326,6 +350,7 @@ export default function Home() {
                   <th className="px-4 py-3 text-left font-semibold">Solicitante</th>
                   <th className="px-4 py-3 text-left font-semibold">Detalle</th>
                   <th className="px-4 py-3 text-left font-semibold">Estado</th>
+                  <th className="px-4 py-3 text-left font-semibold">Celeridad</th>
                   <th className="px-4 py-3 text-left font-semibold">OC</th>
                   <th className="px-4 py-3 text-left font-semibold">Fecha estimada de recepción</th>
                   <th className="px-4 py-3 text-left font-semibold">Adjuntos</th>
@@ -334,13 +359,13 @@ export default function Home() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-12 text-center text-slate-400">
+                    <td colSpan={9} className="px-4 py-12 text-center text-slate-400">
                       Cargando…
                     </td>
                   </tr>
                 ) : filas.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-12 text-center text-slate-400">
+                    <td colSpan={9} className="px-4 py-12 text-center text-slate-400">
                       No hay solicitudes para mostrar.
                     </td>
                   </tr>
@@ -364,6 +389,9 @@ export default function Home() {
                       </td>
                       <td className="whitespace-nowrap border-b border-slate-100 px-4 py-3">
                         <EstadoBadge estado={f.estado} />
+                      </td>
+                      <td className="whitespace-nowrap border-b border-slate-100 px-4 py-3">
+                        <CeleridadBadge celeridad={f.celeridad} />
                       </td>
                       <td className="whitespace-nowrap border-b border-slate-100 px-4 py-3 font-mono text-xs text-slate-600">
                         {f.oc || "—"}

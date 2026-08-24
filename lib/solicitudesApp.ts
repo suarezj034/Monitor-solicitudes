@@ -1,5 +1,5 @@
 import { loadJson, saveJson } from "./storage";
-import type { Solicitud, SolicitudAppPayload } from "./types";
+import type { Celeridad, Solicitud, SolicitudAppPayload } from "./types";
 
 const KEY = "solicitudes-app.json";
 
@@ -13,6 +13,8 @@ export async function crearSolicitudApp(input: {
   solicitante: string;
   sector: string;
   detalle: string;
+  celeridad?: Celeridad;
+  adjuntos?: string[];
 }): Promise<Solicitud> {
   const { siguienteId, filas } = await loadSolicitudesApp();
   const nueva: Solicitud = {
@@ -22,19 +24,20 @@ export async function crearSolicitudApp(input: {
     estado: "PENDIENTE",
     oc: "",
     fechaRecepcion: "",
-    adjuntos: [],
+    adjuntos: input.adjuntos ?? [],
     solicitante: input.solicitante,
     origen: "app",
+    celeridad: input.celeridad,
   };
   filas.push(nueva);
   await saveJson(KEY, { siguienteId: siguienteId + 1, filas } satisfies SolicitudAppPayload);
   return nueva;
 }
 
-/** Actualiza estado/OC/fecha de una solicitud cargada por la app (progreso de compra). */
+/** Actualiza estado/OC/fecha/adjuntos de una solicitud cargada por la app. */
 export async function actualizarSolicitudApp(
   nroSolicitud: string,
-  cambios: Partial<Pick<Solicitud, "estado" | "oc" | "fechaRecepcion">>
+  cambios: Partial<Pick<Solicitud, "estado" | "oc" | "fechaRecepcion" | "adjuntos">>
 ): Promise<Solicitud | null> {
   const { siguienteId, filas } = await loadSolicitudesApp();
   const i = filas.findIndex((f) => f.nroSolicitud === nroSolicitud);

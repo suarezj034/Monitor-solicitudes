@@ -3,12 +3,21 @@
 import { useEffect, useState } from "react";
 import type { DataPayload } from "@/lib/types";
 
+const CELERIDADES = [
+  { value: "URGENTE", label: "Urgente", hint: "Necesito resolverlo ya" },
+  { value: "SEMANA", label: "Dentro de la semana", hint: "Hay unos días de margen" },
+  { value: "NEGOCIAR", label: "Para negociar / buscar proveedores", hint: "Sin apuro, se puede cotizar bien" },
+] as const;
+
 export default function NuevaSolicitudPage() {
   const [sectorActivo, setSectorActivo] = useState<string | null>(null);
   const [sectores, setSectores] = useState<string[]>([]);
   const [sector, setSector] = useState("");
   const [solicitante, setSolicitante] = useState("");
   const [detalle, setDetalle] = useState("");
+  const [celeridad, setCeleridad] = useState<string>("SEMANA");
+  const [tienePresupuesto, setTienePresupuesto] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
@@ -38,15 +47,19 @@ export default function NuevaSolicitudPage() {
     setError(null);
     setOk(null);
     try {
-      const res = await fetch("/api/solicitudes-app", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ solicitante, detalle, sector: esMaestro ? sector : undefined }),
-      });
+      const form = new FormData();
+      form.append("solicitante", solicitante);
+      form.append("detalle", detalle);
+      form.append("celeridad", celeridad);
+      if (esMaestro) form.append("sector", sector);
+      if (tienePresupuesto && file) form.append("file", file);
+      const res = await fetch("/api/solicitudes-app", { method: "POST", body: form });
       const json = await res.json();
       if (res.ok && json.ok) {
         setOk(`Solicitud cargada: Nº ${json.solicitud.nroSolicitud}.`);
         setDetalle("");
+        setTienePresupuesto(false);
+        setFile(null);
       } else {
         setError(json.error ?? "No se pudo cargar la solicitud.");
       }
@@ -125,6 +138,60 @@ export default function NuevaSolicitudPage() {
               placeholder="Qué se necesita, cantidad, para qué es, referencias…"
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"
             />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              ¿Con qué celeridad se necesita?
+            </label>
+            <div className="space-y-2">
+              {CELERIDADES.map((c) => (
+                <label
+                  key={c.value}
+                  className={`flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2 text-sm transition ${
+                    celeridad === c.value
+                      ? "border-brand-400 bg-brand-50"
+                      : "border-slate-200 hover:bg-slate-50"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="celeridad"
+                    value={c.value}
+                    checked={celeridad === c.value}
+                    onChange={(e) => setCeleridad(e.target.value)}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    <span className="block font-medium text-slate-800">{c.label}</span>
+                    <span className="block text-xs text-slate-500">{c.hint}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-lg bg-slate-50 p-3 ring-1 ring-slate-200">
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+              <input
+                type="checkbox"
+                checked={tienePresupuesto}
+                onChange={(e) => {
+                  setTienePresupuesto(e.target.checked);
+                  if (!e.target.checked) setFile(null);
+                }}
+                className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+              />
+              Ya tengo un presupuesto para adjuntar
+            </label>
+            {tienePresupuesto && (
+              <input
+                type="file"
+                accept=".pdf,image/png,image/jpeg,image/webp,image/gif"
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                className="mt-2 block w-full text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-brand-600 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-brand-700"
+              />
+            )}
           </div>
 
           <button
