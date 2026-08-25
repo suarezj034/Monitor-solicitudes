@@ -357,7 +357,7 @@ export default function Home() {
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <div className="overflow-x-auto">
             <table className="min-w-full border-separate border-spacing-0 text-sm">
-              <thead className="sticky top-16 z-10">
+              <thead>
                 <tr className="bg-brand-700 text-white">
                   <th className="px-4 py-3 text-left font-semibold">Nº (sector)</th>
                   <th className="px-4 py-3 text-left font-semibold">Sector</th>

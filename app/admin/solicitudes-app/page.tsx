@@ -233,7 +233,7 @@ export default function AdminSolicitudesAppPage() {
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <div className="overflow-x-auto">
             <table className="min-w-full border-separate border-spacing-0 text-sm">
-              <thead className="sticky top-16 z-10">
+              <thead>
                 <tr className="bg-brand-700 text-white">
                   <th className="px-3 py-2 text-left font-semibold">Nº</th>
                   <th className="px-3 py-2 text-left font-semibold">Sector</th>
@@ -342,7 +342,7 @@ export default function AdminSolicitudesAppPage() {
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <div className="overflow-x-auto">
             <table className="min-w-full border-separate border-spacing-0 text-sm">
-              <thead className="sticky top-16 z-10">
+              <thead>
                 <tr className="bg-amber-700 text-white">
                   <th className="px-3 py-2 text-left font-semibold">ID</th>
                   <th className="px-3 py-2 text-left font-semibold">Nombre</th>
