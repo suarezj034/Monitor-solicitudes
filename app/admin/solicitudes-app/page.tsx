@@ -117,6 +117,35 @@ export default function AdminSolicitudesAppPage() {
     await cargarResumen();
   }
 
+  const [subiendoOC, setSubiendoOC] = useState<string | null>(null);
+  const [avisoOC, setAvisoOC] = useState<Record<string, string>>({});
+
+  /** Sube el documento de la OC; si hay IA, completa sola la fecha estimada de recepción. */
+  async function subirOC(nroSolicitud: string, file: File) {
+    setSubiendoOC(nroSolicitud);
+    try {
+      const form = new FormData();
+      form.append("nroSolicitud", nroSolicitud);
+      form.append("file", file);
+      const res = await fetch("/api/admin/solicitudes-app/oc", { method: "POST", body: form });
+      const json = await res.json();
+      if (res.ok && json.ok) {
+        const fecha = json.solicitud?.fechaRecepcion;
+        setAvisoOC((m) => ({
+          ...m,
+          [nroSolicitud]: fecha
+            ? `OC cargada. Fecha detectada: ${fecha}.`
+            : json.avisoIA || "OC cargada.",
+        }));
+        await cargarResumen();
+      } else {
+        setAvisoOC((m) => ({ ...m, [nroSolicitud]: json.error ?? "No se pudo subir la OC." }));
+      }
+    } finally {
+      setSubiendoOC(null);
+    }
+  }
+
   if (!authed && verificando) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-brand-50 to-slate-100 text-sm text-slate-400">
@@ -176,12 +205,21 @@ export default function AdminSolicitudesAppPage() {
               <p className="text-xs leading-tight text-slate-500">Solicitudes y transporte</p>
             </div>
           </div>
-          <a
-            href="/admin"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50"
-          >
-            ← Ingesta de datos
-          </a>
+          <div className="flex items-center gap-2">
+            <a
+              href="/api/admin/exportar"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50"
+              title="Descargar todas las solicitudes en Excel"
+            >
+              ⬇️ Descargar Excel
+            </a>
+            <a
+              href="/admin"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50"
+            >
+              ← Ingesta de datos
+            </a>
+          </div>
         </div>
       </div>
 
@@ -243,6 +281,7 @@ export default function AdminSolicitudesAppPage() {
                   <th className="px-3 py-2 text-left font-semibold">Presup.</th>
                   <th className="px-3 py-2 text-left font-semibold">Estado</th>
                   <th className="px-3 py-2 text-left font-semibold">OC</th>
+                  <th className="px-3 py-2 text-left font-semibold">Archivo OC</th>
                   <th className="px-3 py-2 text-left font-semibold">Fecha estimada recep.</th>
                   <th className="px-3 py-2 text-left font-semibold">Cotizar</th>
                 </tr>
@@ -250,7 +289,7 @@ export default function AdminSolicitudesAppPage() {
               <tbody>
                 {solicitudesApp.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="px-3 py-8 text-center text-slate-400">
+                    <td colSpan={11} className="px-3 py-8 text-center text-slate-400">
                       No hay solicitudes cargadas por la app todavía.
                     </td>
                   </tr>
@@ -310,7 +349,39 @@ export default function AdminSolicitudesAppPage() {
                         />
                       </td>
                       <td className="border-b border-slate-100 px-3 py-2">
+                        <label className="inline-flex cursor-pointer items-center gap-1 rounded border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50">
+                          {subiendoOC === s.nroSolicitud ? "Subiendo…" : "📎 Subir"}
+                          <input
+                            type="file"
+                            accept=".pdf,image/png,image/jpeg,image/webp,image/gif"
+                            className="hidden"
+                            disabled={subiendoOC === s.nroSolicitud}
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) subirOC(s.nroSolicitud, f);
+                              e.target.value = "";
+                            }}
+                          />
+                        </label>
+                        {s.ocArchivo && (
+                          <a
+                            href={s.ocArchivo}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="ml-1 font-medium text-brand-700 underline hover:text-brand-800"
+                          >
+                            Ver
+                          </a>
+                        )}
+                        {avisoOC[s.nroSolicitud] && (
+                          <p className="mt-1 max-w-[10rem] text-[10px] text-slate-500">
+                            {avisoOC[s.nroSolicitud]}
+                          </p>
+                        )}
+                      </td>
+                      <td className="border-b border-slate-100 px-3 py-2">
                         <input
+                          key={`${s.nroSolicitud}:${s.fechaRecepcion}`}
                           defaultValue={s.fechaRecepcion}
                           placeholder="dd/mm/aaaa"
                           onBlur={(e) => guardarSolicitud(s.nroSolicitud, { fechaRecepcion: e.target.value })}

@@ -151,6 +151,36 @@ Solicitud ${nroSolicitud}. Cotizaciones recibidas:\n\n${lineas.join(
   };
 }
 
+const SISTEMA_FECHA_OC = `Sos un asistente de compras. Te paso una orden de compra (OC) y tenés que encontrar la fecha estimada de entrega/recepción de la mercadería.
+Respondé ÚNICAMENTE con un objeto JSON válido, sin markdown, con esta clave:
+{
+  "fecha": string|null   // fecha estimada de entrega/recepción en formato dd/mm/aaaa, o null si el documento no la indica
+}
+Reglas:
+- Buscá términos como "fecha de entrega", "plazo de entrega", "entrega estimada", "recepción estimada".
+- Si el documento da un plazo relativo (ej. "7 días de la fecha de esta OC") y también figura la fecha de emisión de la OC, calculá la fecha resultante.
+- Si no hay forma de determinar una fecha concreta, devolvé null. No inventes.`;
+
+/** Lee una orden de compra con Gemini y devuelve la fecha estimada de recepción (o null). */
+export async function extraerFechaOC(
+  base64: string,
+  mediaType: string
+): Promise<string | null> {
+  const hoy = new Date().toLocaleDateString("es-AR");
+  const texto = await llamarGemini(SISTEMA_FECHA_OC, [
+    { inline_data: { mime_type: mediaType, data: base64 } },
+    { text: `Fecha de referencia (hoy): ${hoy}. Extraé la fecha estimada de entrega/recepción de esta orden de compra.` },
+  ]);
+  const match = texto.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+  try {
+    const obj = JSON.parse(match[0]) as { fecha?: unknown };
+    return typeof obj.fecha === "string" && obj.fecha.trim() ? obj.fecha.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Parseo defensivo: toma el primer objeto JSON del texto y normaliza los campos. */
 function parseJson(texto: string): DatosExtraidos {
   const match = texto.match(/\{[\s\S]*\}/);

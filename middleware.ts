@@ -20,11 +20,19 @@ const SIN_SECTOR = [
   "/api/logistica",
   "/api/logistica-app",
   "/api/admin",
+  "/api/solicitudes-app/archivo",
 ];
 
 export async function middleware(req: NextRequest) {
   const secret = process.env.AUTH_SECRET || "";
   const { pathname } = req.nextUrl;
+
+  // Los webhooks se autentican con su propio secreto (x-webhook-secret), no
+  // con la sesión de usuario: no tiene cookie quien los dispara (Power
+  // Automate, etc.).
+  if (pathname.startsWith("/api/webhook/")) {
+    return NextResponse.next();
+  }
 
   // --- 1) Login general ---
   const logueado = secret

@@ -113,6 +113,7 @@ export default function Home() {
         origen: f.origen,
         celeridad: f.celeridad,
         celeridadDetalle: f.celeridadDetalle,
+        ocArchivo: f.ocArchivo,
       }));
       setData({ ...json, filas });
     } finally {
@@ -409,6 +410,17 @@ export default function Home() {
                       </td>
                       <td className="whitespace-nowrap border-b border-slate-100 px-4 py-3 font-mono text-xs text-slate-600">
                         {f.oc || "—"}
+                        {f.ocArchivo && (
+                          <a
+                            href={f.ocArchivo}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Ver orden de compra"
+                            className="ml-1.5 font-sans text-brand-600 hover:text-brand-800"
+                          >
+                            📎
+                          </a>
+                        )}
                       </td>
                       <td className="whitespace-nowrap border-b border-slate-100 px-4 py-3 text-slate-700">
                         {f.fechaRecepcion || "—"}

@@ -17,6 +17,10 @@ export interface Solicitud {
   fechaRecepcion: string;
   /** URLs de archivos adjuntos (hasta 3). */
   adjuntos: string[];
+  /** URL del documento de la orden de compra (solo en las de la app). */
+  ocArchivo?: string;
+  /** Nombre del archivo de la OC, para mostrarlo. */
+  ocArchivoNombre?: string;
   /** Quién la pidió. Vacío en cargas viejas del Excel que no lo traían. */
   solicitante: string;
   /** "app" si se cargó con el formulario propio; ausente = viene del Excel. */

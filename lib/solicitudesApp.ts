@@ -36,10 +36,12 @@ export async function crearSolicitudApp(input: {
   return nueva;
 }
 
-/** Actualiza estado/OC/fecha/adjuntos de una solicitud cargada por la app. */
+/** Actualiza estado/OC/fecha/adjuntos/OC-archivo de una solicitud cargada por la app. */
 export async function actualizarSolicitudApp(
   nroSolicitud: string,
-  cambios: Partial<Pick<Solicitud, "estado" | "oc" | "fechaRecepcion" | "adjuntos">>
+  cambios: Partial<
+    Pick<Solicitud, "estado" | "oc" | "fechaRecepcion" | "adjuntos" | "ocArchivo" | "ocArchivoNombre">
+  >
 ): Promise<Solicitud | null> {
   const { siguienteId, filas } = await loadSolicitudesApp();
   const i = filas.findIndex((f) => f.nroSolicitud === nroSolicitud);
