@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { EMPRESA_NOMBRE, LOGO_SRC } from "@/lib/branding";
 
 const CELERIDADES = [
   { value: "URGENTE", label: "Urgente", hint: "72 hs a 5-7 días hábiles" },
@@ -83,7 +84,7 @@ export default function NuevoPedidoTransportePage() {
       <div className="w-full max-w-lg">
         <div className="mb-4 flex items-center justify-between">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/dromex-logo.svg" alt="DROMEX SRL" className="h-11 w-auto" />
+          <img src={LOGO_SRC} alt={EMPRESA_NOMBRE} className="h-11 w-auto" />
           <a
             href="/transporte"
             className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50"

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { LogisticaPayload, Pedido } from "@/lib/types";
+import { EMPRESA_NOMBRE, LOGO_SRC } from "@/lib/branding";
 
 const ESTADO_STYLES: Record<string, string> = {
   PENDIENTE: "bg-amber-100 text-amber-800 ring-amber-200",
@@ -108,7 +109,7 @@ export default function TransportePage() {
         <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex items-center gap-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/dromex-logo.svg" alt="DROMEX SRL" className="h-11 w-auto" />
+            <img src={LOGO_SRC} alt={EMPRESA_NOMBRE} className="h-11 w-auto" />
             <div className="hidden h-9 w-px bg-slate-200 sm:block" />
             <div className="hidden sm:block">
               <p className="text-sm font-semibold leading-tight text-slate-800">Transporte</p>

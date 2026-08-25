@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { EMPRESA_NOMBRE, LOGO_SRC } from "@/lib/branding";
 
 function LoginForm() {
   const router = useRouter();
@@ -43,7 +44,7 @@ function LoginForm() {
       className="w-full max-w-sm space-y-5 rounded-2xl border border-slate-200 bg-white p-7 shadow-lg"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/dromex-logo.svg" alt="DROMEX SRL" className="mx-auto h-14 w-auto" />
+      <img src={LOGO_SRC} alt={EMPRESA_NOMBRE} className="mx-auto h-14 w-auto" />
 
       <div className="text-center">
         <h1 className="text-lg font-bold text-slate-900">Monitor de Solicitudes</h1>

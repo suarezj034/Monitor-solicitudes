@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { DatosExtraidos, Presupuesto } from "@/lib/types";
 import { montoComparable } from "@/lib/moneda";
+import { EMPRESA_NOMBRE, LOGO_SRC } from "@/lib/branding";
 
 const MONEDAS = ["ARS", "USD", "EUR"];
 
@@ -298,7 +299,7 @@ function GestionPageInner() {
     doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(15);
-    doc.text("DROMEX SRL", 14, 9);
+    doc.text(EMPRESA_NOMBRE, 14, 9);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     doc.text("Gestión de compras", 14, 15);
@@ -419,7 +420,7 @@ function GestionPageInner() {
     doc.setFontSize(7.5);
     doc.setTextColor(124, 143, 134);
     doc.text(
-      "DROMEX SRL · Sector Compras · Documento generado automáticamente",
+      `${EMPRESA_NOMBRE} · Sector Compras · Documento generado automáticamente`,
       14,
       H - 8
     );
@@ -482,7 +483,7 @@ function GestionPageInner() {
           className="w-full max-w-sm space-y-5 rounded-2xl border border-slate-200 bg-white p-7 shadow-lg"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/dromex-logo.svg" alt="DROMEX SRL" className="mx-auto h-14 w-auto" />
+          <img src={LOGO_SRC} alt={EMPRESA_NOMBRE} className="mx-auto h-14 w-auto" />
           <div className="text-center">
             <h1 className="text-lg font-bold text-slate-900">Gestión de compras</h1>
             <p className="text-sm text-slate-500">Presupuestos, proveedores y ahorros.</p>
@@ -523,7 +524,7 @@ function GestionPageInner() {
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <div className="flex items-center gap-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/dromex-logo.svg" alt="DROMEX SRL" className="h-10 w-auto" />
+            <img src={LOGO_SRC} alt={EMPRESA_NOMBRE} className="h-10 w-auto" />
             <div className="hidden sm:block">
               <p className="text-sm font-semibold text-slate-800">Gestión de compras</p>
               <p className="text-xs text-slate-500">

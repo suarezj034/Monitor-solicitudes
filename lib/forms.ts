@@ -1,17 +1,15 @@
 /**
- * Links a los formularios externos (Microsoft Forms) que se muestran en el
- * tablero. Se dejan fijos por ahora; se pueden sobreescribir con variables de
- * entorno NEXT_PUBLIC_* sin tocar el código.
+ * Links a formularios externos (Microsoft Forms u otros) opcionales, para
+ * clientes que todavía quieran usarlos en paralelo al formulario propio.
+ * Vacíos por defecto: cada instalación los setea con sus propias variables
+ * de entorno NEXT_PUBLIC_* si los necesita; si no, esa tarjeta no se muestra.
  *
- * IMPORTANTE: usar SIEMPRE el link de "Recopilar respuestas / Copiar vínculo"
- * (ResponsePage.aspx). Los links de DesignPageV2.aspx son de edición y no
- * sirven para que los sectores completen el formulario.
+ * IMPORTANTE (Microsoft Forms): usar SIEMPRE el link de "Recopilar
+ * respuestas / Copiar vínculo" (ResponsePage.aspx). Los links de
+ * DesignPageV2.aspx son de edición y no sirven para que los sectores
+ * completen el formulario.
  */
 
-export const FORM_COMPRAS_URL =
-  process.env.NEXT_PUBLIC_FORM_COMPRAS_URL ||
-  "https://forms.cloud.microsoft/Pages/ResponsePage.aspx?id=OkPHnwdIuUiI-pS4XBdytKISXxy6XwJDrCEpEZfNW6pUOVlNOU9QMlNQQzNRQzMyN1QzNjU2SDlVVi4u";
+export const FORM_COMPRAS_URL = process.env.NEXT_PUBLIC_FORM_COMPRAS_URL || "";
 
-export const FORM_TRANSPORTE_URL =
-  process.env.NEXT_PUBLIC_FORM_TRANSPORTE_URL ||
-  "https://forms.cloud.microsoft/Pages/ResponsePage.aspx?id=OkPHnwdIuUiI-pS4XBdytKISXxy6XwJDrCEpEZfNW6pUNzJGUk5JVzhZMkJZMjFYMzY3UFE0WTdaRC4u";
+export const FORM_TRANSPORTE_URL = process.env.NEXT_PUBLIC_FORM_TRANSPORTE_URL || "";

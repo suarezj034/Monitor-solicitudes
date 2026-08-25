@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { DataPayload, Solicitud } from "@/lib/types";
 import { FORM_COMPRAS_URL, FORM_TRANSPORTE_URL } from "@/lib/forms";
 import { UserMenu } from "@/components/UserMenu";
+import { EMPRESA_NOMBRE, LOGO_SRC } from "@/lib/branding";
 
 const ESTADO_STYLES: Record<string, string> = {
   PENDIENTE: "bg-amber-100 text-amber-800 ring-amber-200",
@@ -185,7 +186,7 @@ export default function Home() {
         <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex items-center gap-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/dromex-logo.svg" alt="DROMEX SRL" className="h-11 w-auto" />
+            <img src={LOGO_SRC} alt={EMPRESA_NOMBRE} className="h-11 w-auto" />
             <div className="hidden h-9 w-px bg-slate-200 sm:block" />
             <div className="hidden sm:block">
               <p className="text-sm font-semibold leading-tight text-slate-800">
@@ -251,51 +252,57 @@ export default function Home() {
           </p>
         </header>
 
-        {/* Accesos a los formularios */}
-        <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Formularios
-          </p>
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <a
-              href={FORM_COMPRAS_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group flex flex-1 items-center gap-3 rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 transition hover:border-brand-300 hover:bg-brand-100"
-            >
-              <span className="text-2xl" aria-hidden="true">
-                🛒
-              </span>
-              <span className="flex flex-col">
-                <span className="text-sm font-semibold text-brand-800">
-                  Solicitud de compra
-                </span>
-                <span className="text-xs text-brand-700/70">
-                  Abrir formulario ↗
-                </span>
-              </span>
-            </a>
+        {/* Accesos a formularios externos (opcional: solo si el cliente los configuró) */}
+        {(FORM_COMPRAS_URL || FORM_TRANSPORTE_URL) && (
+          <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Formularios externos
+            </p>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              {FORM_COMPRAS_URL && (
+                <a
+                  href={FORM_COMPRAS_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex flex-1 items-center gap-3 rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 transition hover:border-brand-300 hover:bg-brand-100"
+                >
+                  <span className="text-2xl" aria-hidden="true">
+                    🛒
+                  </span>
+                  <span className="flex flex-col">
+                    <span className="text-sm font-semibold text-brand-800">
+                      Solicitud de compra
+                    </span>
+                    <span className="text-xs text-brand-700/70">
+                      Abrir formulario ↗
+                    </span>
+                  </span>
+                </a>
+              )}
 
-            <a
-              href={FORM_TRANSPORTE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group flex flex-1 items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 transition hover:border-amber-300 hover:bg-amber-100"
-            >
-              <span className="text-2xl" aria-hidden="true">
-                🚚
-              </span>
-              <span className="flex flex-col">
-                <span className="text-sm font-semibold text-amber-800">
-                  Pedido de transporte
-                </span>
-                <span className="text-xs text-amber-700/70">
-                  Abrir formulario ↗
-                </span>
-              </span>
-            </a>
+              {FORM_TRANSPORTE_URL && (
+                <a
+                  href={FORM_TRANSPORTE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex flex-1 items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 transition hover:border-amber-300 hover:bg-amber-100"
+                >
+                  <span className="text-2xl" aria-hidden="true">
+                    🚚
+                  </span>
+                  <span className="flex flex-col">
+                    <span className="text-sm font-semibold text-amber-800">
+                      Pedido de transporte
+                    </span>
+                    <span className="text-xs text-amber-700/70">
+                      Abrir formulario ↗
+                    </span>
+                  </span>
+                </a>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Resumen por estado */}
         {conteoEstados.length > 0 && (
