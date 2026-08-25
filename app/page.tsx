@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { DataPayload, Solicitud } from "@/lib/types";
 import { FORM_COMPRAS_URL, FORM_TRANSPORTE_URL } from "@/lib/forms";
+import { UserMenu } from "@/components/UserMenu";
 
 const ESTADO_STYLES: Record<string, string> = {
   PENDIENTE: "bg-amber-100 text-amber-800 ring-amber-200",
@@ -179,8 +180,8 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-brand-50 to-slate-50">
       {/* Barra superior con logo */}
-      <div className="border-b border-slate-200 bg-white/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+      <div className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 shadow-sm backdrop-blur">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex items-center gap-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/dromex-logo.svg" alt="DROMEX SRL" className="h-11 w-auto" />
@@ -195,44 +196,41 @@ export default function Home() {
           <div className="flex items-center gap-2">
             <button
               onClick={fetchData}
-              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700"
+              title="Actualizar"
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50"
             >
               <span className={loading ? "animate-spin" : ""}>⟳</span>
-              Actualizar
+              <span className="hidden sm:inline">Actualizar</span>
             </button>
-            <button
-              onClick={cambiarSector}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50"
-              title="Elegir otro sector"
-            >
-              Cambiar sector
-            </button>
+
+            <div className="mx-1 hidden h-6 w-px bg-slate-200 sm:block" />
+
             <a
               href="/transporte"
-              className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800 shadow-sm transition hover:bg-amber-100"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800 shadow-sm transition hover:bg-amber-100"
               title="Ver pedidos de transporte"
             >
-              🚚 Transporte
+              🚚 <span className="hidden sm:inline">Transporte</span>
             </a>
             <a
               href="/solicitud/nueva"
-              className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
               title="Cargar una nueva solicitud de compra"
             >
               + Nueva solicitud
             </a>
-            <button
-              onClick={logout}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50"
-              title="Cerrar sesión"
-            >
-              Salir
-            </button>
+
+            <UserMenu
+              actions={[
+                { label: "Cambiar sector", onClick: cambiarSector },
+                { label: "Cerrar sesión", onClick: logout, danger: true },
+              ]}
+            />
           </div>
         </div>
       </div>
 
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:py-10">
+      <main className="mx-auto max-w-[1600px] px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
         {/* Encabezado */}
         <header className="mb-6">
           <div className="flex flex-wrap items-center gap-3">
@@ -357,9 +355,9 @@ export default function Home() {
 
         {/* Tabla */}
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <div className="max-h-[70vh] overflow-auto">
+          <div className="overflow-x-auto">
             <table className="min-w-full border-separate border-spacing-0 text-sm">
-              <thead className="sticky top-0 z-10">
+              <thead className="sticky top-16 z-10">
                 <tr className="bg-brand-700 text-white">
                   <th className="px-4 py-3 text-left font-semibold">Nº (sector)</th>
                   <th className="px-4 py-3 text-left font-semibold">Sector</th>

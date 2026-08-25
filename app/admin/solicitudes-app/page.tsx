@@ -162,20 +162,38 @@ export default function AdminSolicitudesAppPage() {
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-10">
-      <header className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            Panel de gestión: solicitudes y transporte
+    <div className="min-h-screen bg-gradient-to-b from-brand-50 to-slate-50">
+      <div className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 shadow-sm backdrop-blur">
+        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-4">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/dromex-logo.svg" alt="DROMEX SRL" className="h-11 w-auto" />
+            <div className="hidden h-9 w-px bg-slate-200 sm:block" />
+            <div className="hidden sm:block">
+              <p className="text-sm font-semibold leading-tight text-slate-800">
+                Panel de gestión
+              </p>
+              <p className="text-xs leading-tight text-slate-500">Solicitudes y transporte</p>
+            </div>
+          </div>
+          <a
+            href="/admin"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50"
+          >
+            ← Ingesta de datos
+          </a>
+        </div>
+      </div>
+
+      <main className="mx-auto max-w-[1600px] px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+        <header className="mb-8">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+            Reportes y avance
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Reportes y avance de lo cargado con los formularios propios.
+            Lo cargado con los formularios propios, por sector y por estado.
           </p>
-        </div>
-        <a href="/admin" className="text-sm font-medium text-brand-700 underline hover:text-brand-800">
-          ← Ingesta de datos
-        </a>
-      </header>
+        </header>
 
       {/* Reportes */}
       <section className="mb-8">
@@ -213,9 +231,9 @@ export default function AdminSolicitudesAppPage() {
           Solicitudes de compra a gestionar ({solicitudesApp.length})
         </h2>
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <div className="max-h-[60vh] overflow-auto">
+          <div className="overflow-x-auto">
             <table className="min-w-full border-separate border-spacing-0 text-sm">
-              <thead className="sticky top-0 z-10">
+              <thead className="sticky top-16 z-10">
                 <tr className="bg-brand-700 text-white">
                   <th className="px-3 py-2 text-left font-semibold">Nº</th>
                   <th className="px-3 py-2 text-left font-semibold">Sector</th>
@@ -322,9 +340,9 @@ export default function AdminSolicitudesAppPage() {
           Pedidos de transporte a gestionar ({pedidosApp.length})
         </h2>
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <div className="max-h-[60vh] overflow-auto">
+          <div className="overflow-x-auto">
             <table className="min-w-full border-separate border-spacing-0 text-sm">
-              <thead className="sticky top-0 z-10">
+              <thead className="sticky top-16 z-10">
                 <tr className="bg-amber-700 text-white">
                   <th className="px-3 py-2 text-left font-semibold">ID</th>
                   <th className="px-3 py-2 text-left font-semibold">Nombre</th>
@@ -406,6 +424,7 @@ export default function AdminSolicitudesAppPage() {
           </div>
         </div>
       </section>
-    </main>
+      </main>
+    </div>
   );
 }

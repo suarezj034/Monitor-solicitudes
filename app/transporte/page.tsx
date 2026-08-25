@@ -104,8 +104,8 @@ export default function TransportePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-brand-50 to-slate-50">
-      <div className="border-b border-slate-200 bg-white/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+      <div className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 shadow-sm backdrop-blur">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex items-center gap-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/dromex-logo.svg" alt="DROMEX SRL" className="h-11 w-auto" />
@@ -118,20 +118,24 @@ export default function TransportePage() {
           <div className="flex items-center gap-2">
             <button
               onClick={fetchData}
-              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700"
+              title="Actualizar"
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50"
             >
               <span className={loading ? "animate-spin" : ""}>⟳</span>
-              Actualizar
+              <span className="hidden sm:inline">Actualizar</span>
             </button>
+
+            <div className="mx-1 hidden h-6 w-px bg-slate-200 sm:block" />
+
             <a
               href="/"
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50"
             >
-              Volver a solicitudes
+              🛒 <span className="hidden sm:inline">Solicitudes</span>
             </a>
             <a
               href="/transporte/nueva"
-              className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
             >
               + Nuevo pedido
             </a>
@@ -139,7 +143,7 @@ export default function TransportePage() {
         </div>
       </div>
 
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:py-10">
+      <main className="mx-auto max-w-[1600px] px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
         <header className="mb-6">
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
             Pedidos de transporte
@@ -165,9 +169,9 @@ export default function TransportePage() {
         </div>
 
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <div className="max-h-[70vh] overflow-auto">
+          <div className="overflow-x-auto">
             <table className="min-w-full border-separate border-spacing-0 text-sm">
-              <thead className="sticky top-0 z-10">
+              <thead className="sticky top-16 z-10">
                 <tr className="bg-brand-700 text-white">
                   <th className="px-4 py-3 text-left font-semibold">Nombre</th>
                   <th className="px-4 py-3 text-left font-semibold">Detalle</th>
