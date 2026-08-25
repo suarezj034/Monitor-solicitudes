@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminOk } from "@/lib/adminAuth";
 import { actualizarSolicitudApp, loadSolicitudesApp } from "@/lib/solicitudesApp";
 import { saveBinary } from "@/lib/storage";
-import { extraerFechaOC, IA_HABILITADA } from "@/lib/extract";
+import { extraerDatosOC, IA_HABILITADA } from "@/lib/extract";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -60,15 +60,19 @@ export async function POST(req: NextRequest) {
   const url = `/api/solicitudes-app/archivo?key=${encodeURIComponent(key)}`;
 
   let fechaRecepcion: string | undefined;
+  let oc: string | undefined;
   let avisoIA: string | null = null;
   if (IA_HABILITADA()) {
     try {
       const b64 = Buffer.from(bytes).toString("base64");
-      const fecha = await extraerFechaOC(b64, file.type);
-      if (fecha) fechaRecepcion = fecha;
-      else avisoIA = "La IA no encontró una fecha de entrega en el documento.";
+      const datos = await extraerDatosOC(b64, file.type);
+      if (datos.fecha) fechaRecepcion = datos.fecha;
+      if (datos.numero) oc = datos.numero;
+      if (!datos.fecha && !datos.numero) {
+        avisoIA = "La IA no encontró el número ni la fecha de entrega en el documento.";
+      }
     } catch (e) {
-      avisoIA = e instanceof Error ? e.message : "No se pudo leer la fecha con IA.";
+      avisoIA = e instanceof Error ? e.message : "No se pudo leer la OC con IA.";
     }
   }
 
@@ -76,6 +80,7 @@ export async function POST(req: NextRequest) {
     ocArchivo: url,
     ocArchivoNombre: file.name,
     ...(fechaRecepcion ? { fechaRecepcion } : {}),
+    ...(oc ? { oc } : {}),
   });
 
   return NextResponse.json({ ok: true, solicitud: actualizada, avisoIA });

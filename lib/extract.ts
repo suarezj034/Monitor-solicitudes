@@ -151,36 +151,49 @@ Solicitud ${nroSolicitud}. Cotizaciones recibidas:\n\n${lineas.join(
   };
 }
 
-const SISTEMA_FECHA_OC = `Sos un asistente de compras. Te paso una orden de compra (OC) y tenés que encontrar la fecha estimada de entrega/recepción de la mercadería.
-Respondé ÚNICAMENTE con un objeto JSON válido, sin markdown, con esta clave:
+const SISTEMA_DATOS_OC = `Sos un asistente de compras. Te paso una orden de compra (OC) y tenés que encontrar dos datos: su número y la fecha estimada de entrega/recepción de la mercadería.
+Respondé ÚNICAMENTE con un objeto JSON válido, sin markdown, con estas claves:
 {
-  "fecha": string|null   // fecha estimada de entrega/recepción en formato dd/mm/aaaa, o null si el documento no la indica
+  "numero": string|null,  // solo los dígitos/código del número de OC (sin la palabra "OC", sin espacios ni guiones), o null si no figura
+  "fecha": string|null    // fecha estimada de entrega/recepción en formato dd/mm/aaaa, o null si el documento no la indica
 }
-Reglas:
+Reglas para "numero":
+- Buscá "Nº de OC", "Orden de Compra Nº", "N° de Orden de Compra", "Purchase Order", o el número que encabeza el documento.
+- Devolvé SOLO el código (ej. si dice "Orden de Compra Nº 4019" devolvé "4019"; si dice "OC-4019" devolvé "4019").
+Reglas para "fecha":
 - El dato está en la sección/solapa "Entrega" de la OC: es la fuente principal y la que tiene prioridad. Fijate ahí primero.
 - Si esa sección no tiene una fecha (solo un plazo, ej. "7 días") y hay una fecha de emisión de la OC, calculá la fecha resultante.
 - Si no aparece la sección "Entrega", buscá términos equivalentes: "fecha de entrega", "plazo de entrega", "entrega estimada", "recepción estimada".
 - Si no hay forma de determinar una fecha concreta, devolvé null. No inventes.`;
 
-/** Lee una orden de compra con Gemini y devuelve la fecha estimada de recepción (o null). */
-export async function extraerFechaOC(
-  base64: string,
-  mediaType: string
-): Promise<string | null> {
+export interface DatosOC {
+  /** Número de OC ya formateado como "OC<número>" (ej. "OC4019"), o null. */
+  numero: string | null;
+  /** Fecha estimada de entrega/recepción en dd/mm/aaaa, o null. */
+  fecha: string | null;
+}
+
+/** Lee una orden de compra con Gemini: número de OC y fecha estimada de recepción. */
+export async function extraerDatosOC(base64: string, mediaType: string): Promise<DatosOC> {
   const hoy = new Date().toLocaleDateString("es-AR");
-  const texto = await llamarGemini(SISTEMA_FECHA_OC, [
+  const texto = await llamarGemini(SISTEMA_DATOS_OC, [
     { inline_data: { mime_type: mediaType, data: base64 } },
     {
-      text: `Fecha de referencia (hoy): ${hoy}. Extraé la fecha estimada de entrega/recepción de esta orden de compra, tomando el dato de la solapa/sección "Entrega".`,
+      text: `Fecha de referencia (hoy): ${hoy}. Extraé el número de OC y la fecha estimada de entrega/recepción de esta orden de compra, tomando la fecha de la solapa/sección "Entrega".`,
     },
   ]);
   const match = texto.match(/\{[\s\S]*\}/);
-  if (!match) return null;
+  if (!match) return { numero: null, fecha: null };
   try {
-    const obj = JSON.parse(match[0]) as { fecha?: unknown };
-    return typeof obj.fecha === "string" && obj.fecha.trim() ? obj.fecha.trim() : null;
+    const obj = JSON.parse(match[0]) as { numero?: unknown; fecha?: unknown };
+    const numeroLimpio =
+      typeof obj.numero === "string" ? obj.numero.replace(/[^\w-]/g, "").trim() : "";
+    return {
+      numero: numeroLimpio ? `OC${numeroLimpio}` : null,
+      fecha: typeof obj.fecha === "string" && obj.fecha.trim() ? obj.fecha.trim() : null,
+    };
   } catch {
-    return null;
+    return { numero: null, fecha: null };
   }
 }
 

@@ -119,10 +119,11 @@ export default function AdminSolicitudesAppPage() {
 
   const [subiendoOC, setSubiendoOC] = useState<string | null>(null);
   const [avisoOC, setAvisoOC] = useState<Record<string, string>>({});
-  /** Nº de solicitud cuya fecha se acaba de completar sola con IA (para resaltarla hasta que la confirmen). */
+  /** Nº de solicitud cuya fecha/OC se acaba de completar sola con IA (para resaltarla hasta que la confirmen). */
   const [fechaSugerida, setFechaSugerida] = useState<Record<string, boolean>>({});
+  const [ocSugerida, setOcSugerida] = useState<Record<string, boolean>>({});
 
-  /** Sube el documento de la OC; si hay IA, completa sola la fecha estimada de recepción. */
+  /** Sube el documento de la OC; si hay IA, completa solos el número y la fecha estimada de recepción. */
   async function subirOC(nroSolicitud: string, file: File) {
     setSubiendoOC(nroSolicitud);
     try {
@@ -133,20 +134,23 @@ export default function AdminSolicitudesAppPage() {
       const json = await res.json();
       if (res.ok && json.ok) {
         const fecha = json.solicitud?.fechaRecepcion;
+        const oc = json.solicitud?.oc;
+        const detectado = [oc && `OC ${oc}`, fecha && `entrega ${fecha}`].filter(Boolean).join(", ");
         setAvisoOC((m) => ({
           ...m,
-          [nroSolicitud]: fecha
-            ? `OC cargada. Fecha detectada: ${fecha}. Revisala y confirmala →`
+          [nroSolicitud]: detectado
+            ? `Detectado: ${detectado}. Revisá y confirmá →`
             : json.avisoIA || "OC cargada.",
         }));
         // Se actualiza el estado local al toque (no hace falta esperar el
-        // refetch) para que el recuadro de fecha se complete de inmediato.
+        // refetch) para que los recuadros se completen de inmediato.
         if (json.solicitud) {
           setSolicitudes((prev) =>
             prev.map((s) => (s.nroSolicitud === nroSolicitud ? { ...s, ...json.solicitud } : s))
           );
         }
         if (fecha) setFechaSugerida((m) => ({ ...m, [nroSolicitud]: true }));
+        if (oc) setOcSugerida((m) => ({ ...m, [nroSolicitud]: true }));
       } else {
         setAvisoOC((m) => ({ ...m, [nroSolicitud]: json.error ?? "No se pudo subir la OC." }));
       }
@@ -352,9 +356,27 @@ export default function AdminSolicitudesAppPage() {
                       </td>
                       <td className="border-b border-slate-100 px-3 py-2">
                         <input
+                          key={`${s.nroSolicitud}:oc:${s.oc}`}
                           defaultValue={s.oc}
-                          onBlur={(e) => guardarSolicitud(s.nroSolicitud, { oc: e.target.value })}
-                          className="w-24 rounded border border-slate-300 px-2 py-1 text-xs"
+                          onBlur={(e) => {
+                            guardarSolicitud(s.nroSolicitud, { oc: e.target.value });
+                            setOcSugerida((m) => {
+                              if (!m[s.nroSolicitud]) return m;
+                              const copia = { ...m };
+                              delete copia[s.nroSolicitud];
+                              return copia;
+                            });
+                          }}
+                          title={
+                            ocSugerida[s.nroSolicitud]
+                              ? "Completado por IA a partir de la OC: revisalo y confirmá (hacé click afuera para confirmar)."
+                              : undefined
+                          }
+                          className={`w-24 rounded border px-2 py-1 text-xs ${
+                            ocSugerida[s.nroSolicitud]
+                              ? "border-amber-400 bg-amber-50 ring-1 ring-amber-300"
+                              : "border-slate-300"
+                          }`}
                         />
                       </td>
                       <td className="border-b border-slate-100 px-3 py-2">
@@ -385,7 +407,9 @@ export default function AdminSolicitudesAppPage() {
                         {avisoOC[s.nroSolicitud] && (
                           <p
                             className={`mt-1 max-w-[10rem] text-[10px] ${
-                              fechaSugerida[s.nroSolicitud] ? "font-medium text-amber-700" : "text-slate-500"
+                              fechaSugerida[s.nroSolicitud] || ocSugerida[s.nroSolicitud]
+                                ? "font-medium text-amber-700"
+                                : "text-slate-500"
                             }`}
                           >
                             {avisoOC[s.nroSolicitud]}

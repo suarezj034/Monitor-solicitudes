@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { actualizarSolicitudApp, loadSolicitudesApp } from "@/lib/solicitudesApp";
 import { saveBinary } from "@/lib/storage";
-import { extraerFechaOC, IA_HABILITADA } from "@/lib/extract";
+import { extraerDatosOC, IA_HABILITADA } from "@/lib/extract";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -70,11 +70,13 @@ export async function POST(req: NextRequest) {
   const url = `/api/solicitudes-app/archivo?key=${encodeURIComponent(key)}`;
 
   let fechaRecepcion: string | undefined;
+  let oc: string | undefined;
   if (IA_HABILITADA()) {
     try {
       const b64 = Buffer.from(bytes).toString("base64");
-      const fecha = await extraerFechaOC(b64, file.type);
-      if (fecha) fechaRecepcion = fecha;
+      const datos = await extraerDatosOC(b64, file.type);
+      if (datos.fecha) fechaRecepcion = datos.fecha;
+      if (datos.numero) oc = datos.numero;
     } catch {
       /* si la IA falla, igual queda guardado el archivo */
     }
@@ -84,7 +86,13 @@ export async function POST(req: NextRequest) {
     ocArchivo: url,
     ocArchivoNombre: file.name,
     ...(fechaRecepcion ? { fechaRecepcion } : {}),
+    ...(oc ? { oc } : {}),
   });
 
-  return NextResponse.json({ ok: true, solicitud: actualizada, fechaDetectada: fechaRecepcion ?? null });
+  return NextResponse.json({
+    ok: true,
+    solicitud: actualizada,
+    fechaDetectada: fechaRecepcion ?? null,
+    ocDetectada: oc ?? null,
+  });
 }
