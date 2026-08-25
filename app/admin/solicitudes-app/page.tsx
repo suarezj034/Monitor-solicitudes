@@ -119,6 +119,8 @@ export default function AdminSolicitudesAppPage() {
 
   const [subiendoOC, setSubiendoOC] = useState<string | null>(null);
   const [avisoOC, setAvisoOC] = useState<Record<string, string>>({});
+  /** Nº de solicitud cuya fecha se acaba de completar sola con IA (para resaltarla hasta que la confirmen). */
+  const [fechaSugerida, setFechaSugerida] = useState<Record<string, boolean>>({});
 
   /** Sube el documento de la OC; si hay IA, completa sola la fecha estimada de recepción. */
   async function subirOC(nroSolicitud: string, file: File) {
@@ -134,10 +136,17 @@ export default function AdminSolicitudesAppPage() {
         setAvisoOC((m) => ({
           ...m,
           [nroSolicitud]: fecha
-            ? `OC cargada. Fecha detectada: ${fecha}.`
+            ? `OC cargada. Fecha detectada: ${fecha}. Revisala y confirmala →`
             : json.avisoIA || "OC cargada.",
         }));
-        await cargarResumen();
+        // Se actualiza el estado local al toque (no hace falta esperar el
+        // refetch) para que el recuadro de fecha se complete de inmediato.
+        if (json.solicitud) {
+          setSolicitudes((prev) =>
+            prev.map((s) => (s.nroSolicitud === nroSolicitud ? { ...s, ...json.solicitud } : s))
+          );
+        }
+        if (fecha) setFechaSugerida((m) => ({ ...m, [nroSolicitud]: true }));
       } else {
         setAvisoOC((m) => ({ ...m, [nroSolicitud]: json.error ?? "No se pudo subir la OC." }));
       }
@@ -374,7 +383,11 @@ export default function AdminSolicitudesAppPage() {
                           </a>
                         )}
                         {avisoOC[s.nroSolicitud] && (
-                          <p className="mt-1 max-w-[10rem] text-[10px] text-slate-500">
+                          <p
+                            className={`mt-1 max-w-[10rem] text-[10px] ${
+                              fechaSugerida[s.nroSolicitud] ? "font-medium text-amber-700" : "text-slate-500"
+                            }`}
+                          >
                             {avisoOC[s.nroSolicitud]}
                           </p>
                         )}
@@ -384,8 +397,25 @@ export default function AdminSolicitudesAppPage() {
                           key={`${s.nroSolicitud}:${s.fechaRecepcion}`}
                           defaultValue={s.fechaRecepcion}
                           placeholder="dd/mm/aaaa"
-                          onBlur={(e) => guardarSolicitud(s.nroSolicitud, { fechaRecepcion: e.target.value })}
-                          className="w-24 rounded border border-slate-300 px-2 py-1 text-xs"
+                          onBlur={(e) => {
+                            guardarSolicitud(s.nroSolicitud, { fechaRecepcion: e.target.value });
+                            setFechaSugerida((m) => {
+                              if (!m[s.nroSolicitud]) return m;
+                              const copia = { ...m };
+                              delete copia[s.nroSolicitud];
+                              return copia;
+                            });
+                          }}
+                          title={
+                            fechaSugerida[s.nroSolicitud]
+                              ? "Completada por IA a partir de la OC: revisala y confirmá (hacé click afuera para confirmar)."
+                              : undefined
+                          }
+                          className={`w-24 rounded border px-2 py-1 text-xs ${
+                            fechaSugerida[s.nroSolicitud]
+                              ? "border-amber-400 bg-amber-50 ring-1 ring-amber-300"
+                              : "border-slate-300"
+                          }`}
                         />
                       </td>
                       <td className="whitespace-nowrap border-b border-slate-100 px-3 py-2">
