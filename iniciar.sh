@@ -6,7 +6,7 @@ if [ ! -d ".next" ]; then
 fi
 
 echo ""
-echo "Iniciando LogixAI en http://localhost:3000"
+echo "Iniciando SupplIA en http://localhost:3000"
 echo "No cierres esta ventana mientras lo estés usando."
 echo ""
 ( sleep 4 && (open http://localhost:3000 2>/dev/null || xdg-open http://localhost:3000 2>/dev/null || true) ) &

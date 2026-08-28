@@ -1,5 +1,5 @@
 @echo off
-title LogixAI
+title SupplIA
 color 0A
 if not exist ".next" (
   echo Compilando el sistema por primera vez, puede tardar 1-2 minutos...
@@ -13,7 +13,7 @@ if not exist ".next" (
 )
 
 echo.
-echo Iniciando LogixAI...
+echo Iniciando SupplIA...
 echo Se va a abrir en el navegador en unos segundos: http://localhost:3000
 echo No cierres esta ventana mientras lo estes usando.
 echo.

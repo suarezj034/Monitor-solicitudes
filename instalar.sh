@@ -2,7 +2,7 @@
 set -e
 echo ""
 echo "============================================"
-echo "   LogixAI - Instalador"
+echo "   SupplIA - Instalador"
 echo "============================================"
 echo ""
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Asistente de instalación de LogixAI.
+ * Asistente de instalación de SupplIA.
  * Pensado para poder correrlo alguien sin conocimientos de programación:
  * hace preguntas en español y arma el archivo .env.local solo.
  */
@@ -34,7 +34,7 @@ function ejecutar(cmd, args) {
 
 console.log("");
 console.log("============================================");
-console.log("   LogixAI — asistente de instalación");
+console.log("   SupplIA — asistente de instalación");
 console.log("============================================");
 console.log("");
 console.log("Respondé las preguntas. Cuando un valor tiene algo entre paréntesis,");

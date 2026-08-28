@@ -1,9 +1,9 @@
 @echo off
-title LogixAI - Instalador
+title SupplIA - Instalador
 color 0A
 echo.
 echo ============================================
-echo    LogixAI - Instalador
+echo    SupplIA - Instalador
 echo ============================================
 echo.
 
