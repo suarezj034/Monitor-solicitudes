@@ -106,6 +106,22 @@ export async function loadBinary(
   }
 }
 
+/** Borra un archivo binario guardado bajo `key` (se usa al archivar a almacenamiento frío). */
+export async function deleteBinary(key: string): Promise<void> {
+  if (hasBlob()) {
+    const { del } = await import("@vercel/blob");
+    await del(key);
+    return;
+  }
+  const fs = await import("node:fs/promises");
+  const path = await import("node:path");
+  try {
+    await fs.unlink(path.join(process.cwd(), ".data", key));
+  } catch {
+    /* ya no estaba */
+  }
+}
+
 /** Datos de las solicitudes (fuente: Excel subido por el admin). */
 export async function saveData(data: DataPayload): Promise<void> {
   await saveJson(BLOB_KEY, data);

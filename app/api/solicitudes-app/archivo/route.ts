@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readSectorToken, SECTOR_COOKIE } from "@/lib/auth";
 import { adminOk } from "@/lib/adminAuth";
-import { loadBinary } from "@/lib/storage";
+import { leerArchivoUnificado } from "@/lib/archivoLectura";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,10 +18,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "No autorizado." }, { status: 403 });
   }
   const key = req.nextUrl.searchParams.get("key") ?? "";
-  if (!key.startsWith("solicitudes-app/")) {
+  if (!key.startsWith("solicitudes-app/") && !key.startsWith("r2:solicitudes-app/")) {
     return NextResponse.json({ error: "Clave inválida." }, { status: 400 });
   }
-  const archivo = await loadBinary(key);
+  const archivo = await leerArchivoUnificado(key);
   if (!archivo) {
     return NextResponse.json({ error: "Archivo no encontrado." }, { status: 404 });
   }

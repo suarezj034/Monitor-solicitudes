@@ -118,6 +118,35 @@ export default function AdminSolicitudesAppPage() {
     await cargarResumen();
   }
 
+  const [archivando, setArchivando] = useState(false);
+  const [avisoArchivado, setAvisoArchivado] = useState<string | null>(null);
+
+  /** Corre el archivado a documentos fríos (R2) a demanda; el cron lo hace solo todos los días. */
+  async function ejecutarArchivadoAhora() {
+    setArchivando(true);
+    setAvisoArchivado(null);
+    try {
+      const res = await fetch("/api/admin/archivar", { method: "POST" });
+      const json = await res.json();
+      if (!res.ok) {
+        setAvisoArchivado(json.error ?? "No se pudo ejecutar el archivado.");
+        return;
+      }
+      if (!json.habilitado) {
+        setAvisoArchivado("Retención ilimitada (RETENCION_ARCHIVOS no configurada): no hay nada para archivar.");
+      } else if (json.errores?.length) {
+        setAvisoArchivado(`Archivadas ${json.solicitudesArchivadas} solicitudes y ${json.pedidosArchivados} pedidos. Errores: ${json.errores.join(" · ")}`);
+      } else {
+        setAvisoArchivado(
+          `Listo: ${json.solicitudesArchivadas} solicitudes y ${json.pedidosArchivados} pedidos movidos a almacenamiento frío (de ${json.solicitudesRevisadas} y ${json.pedidosRevisados} revisados).`
+        );
+      }
+      await cargarResumen();
+    } finally {
+      setArchivando(false);
+    }
+  }
+
   const [subiendoOC, setSubiendoOC] = useState<string | null>(null);
   const [avisoOC, setAvisoOC] = useState<Record<string, string>>({});
   /** Nº de solicitud cuya fecha/OC se acaba de completar sola con IA (para resaltarla hasta que la confirmen). */
@@ -220,6 +249,15 @@ export default function AdminSolicitudesAppPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={ejecutarArchivadoAhora}
+              disabled={archivando}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              title="Mover a almacenamiento frío los documentos de compras/pedidos cerrados hace tiempo (el cron lo hace solo una vez por día)"
+            >
+              {archivando ? "Archivando…" : "🧊 Archivar ahora"}
+            </button>
             <a
               href="/api/admin/exportar"
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50"
@@ -245,6 +283,11 @@ export default function AdminSolicitudesAppPage() {
           <p className="mt-1 text-sm text-slate-500">
             Lo cargado con los formularios propios, por sector y por estado.
           </p>
+          {avisoArchivado && (
+            <p className="mt-3 max-w-2xl rounded-lg bg-sky-50 px-3 py-2 text-xs text-sky-800 ring-1 ring-sky-200">
+              🧊 {avisoArchivado}
+            </p>
+          )}
         </header>
 
       {/* Reportes */}

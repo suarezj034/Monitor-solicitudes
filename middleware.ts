@@ -29,8 +29,9 @@ export async function middleware(req: NextRequest) {
 
   // Los webhooks se autentican con su propio secreto (x-webhook-secret), no
   // con la sesión de usuario: no tiene cookie quien los dispara (Power
-  // Automate, etc.).
-  if (pathname.startsWith("/api/webhook/")) {
+  // Automate, etc.). Lo mismo para el cron de archivado: Vercel lo llama sin
+  // cookie, autenticado con el header Authorization: Bearer <CRON_SECRET>.
+  if (pathname.startsWith("/api/webhook/") || pathname.startsWith("/api/cron/")) {
     return NextResponse.next();
   }
 

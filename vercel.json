@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/archivar",
+      "schedule": "0 6 * * *"
+    }
+  ]
+}
